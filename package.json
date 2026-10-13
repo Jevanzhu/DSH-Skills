@@ -8,6 +8,6 @@
     "node": ">=24"
   },
   "scripts": {
-    "test": "node --test scripts/structure.spec.ts .agents/skills/agent-notes/scripts/gates.spec.ts .agents/skills/project-harness/scripts/bootstrap.spec.ts .agents/skills/project-harness/scripts/baseline.spec.ts .agents/skills/project-harness/scripts/run-gates.spec.ts"
+    "test": "node --test scripts/structure.spec.ts skills/agent-notes/scripts/gates.spec.ts skills/project-harness/scripts/bootstrap.spec.ts skills/project-harness/scripts/baseline.spec.ts skills/project-harness/scripts/run-gates.spec.ts"
   }
 }

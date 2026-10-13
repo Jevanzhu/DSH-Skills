@@ -12,18 +12,21 @@
 ## 结构
 
 ```
-.agents/skills/              # 技能本体，保持与目标仓库安装位置一致的路径
+skills/                      # 技能本体；源码布局，安装时复制到目标仓库的 .agents/skills/
   agent-notes/               #   SKILL.md + references/ + scripts/ + templates/
   project-harness/           #   SKILL.md + references/ + scripts/ + templates/
 scripts/structure.spec.ts    # 仓库自身的不变量守卫（共享文件逐字节一致等）
 ```
 
+`.agents/` 是**安装位置**而不是源码位置：它给消费方仓库用，被客户端当作技能目录扫描。正本仓不占这个路径，避免本仓的技能被当成已安装技能加载，也避免源码布局与安装布局混为一谈。脚本一律按「相对于自身 skill 目录」解析，因此两份布局都跑得通。
+
 ## 装进一个仓库
 
 ```sh
-cp -r .agents/skills <repo>/.agents/
-node .agents/skills/project-harness/scripts/bootstrap.ts --target <repo> --dry-run
-node .agents/skills/project-harness/scripts/bootstrap.ts --target <repo>
+mkdir -p <repo>/.agents/skills
+cp -r skills/. <repo>/.agents/skills/
+node skills/project-harness/scripts/bootstrap.ts --target <repo> --dry-run
+node skills/project-harness/scripts/bootstrap.ts --target <repo>
 ```
 
 bootstrap 会铺 `.agents/notes/` 生命周期树、写 `harness.json`（主语言与配对开关）、复制门禁脚本到目标仓库的 `scripts/harness/`，并按 `--adopt` 与否决定既有违规是入账还是直接红。

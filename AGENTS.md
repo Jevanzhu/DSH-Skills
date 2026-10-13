@@ -14,4 +14,4 @@
 ## 入口
 
 - `README.md`：结构、安装、测试、与上游的关系。
-- `.agents/skills/agent-notes/SKILL.md`、`.agents/skills/project-harness/SKILL.md`：两个 skill 的正文，改动前先读对应 SKILL.md 与其 references。
+- `skills/agent-notes/SKILL.md`、`skills/project-harness/SKILL.md`：两个 skill 的正文，改动前先读对应 SKILL.md 与其 references。

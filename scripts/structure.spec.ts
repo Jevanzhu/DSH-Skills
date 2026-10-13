@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, test } from 'node:test'
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const SKILLS_ROOT = join(REPO_ROOT, '.agents/skills')
+const SKILLS_ROOT = join(REPO_ROOT, 'skills')
 
 const SKILLS = readdirSync(SKILLS_ROOT, { withFileTypes: true })
   .filter(entry => entry.isDirectory())
