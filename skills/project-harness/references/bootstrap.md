@@ -56,9 +56,9 @@ node ~/.agents/skills/project-harness/scripts/bootstrap.ts --target ~/myproj --a
 
 `--dry-run` 只打印计划，不写任何文件。默认不覆盖任何已存在文件。
 
-`--force` 用于升级后刷新校验器副本，**只覆盖校验器**。五份 manifest（文档预算、文档索引、注释卫生、测试面、宣称）装的是你自己的申报，不在它的覆盖面里。
+`--force` 用于升级后刷新校验器副本，**只覆盖校验器**。五份 manifest（文档预算、文档索引、注释卫生、测试面、宣称）装的是你自己的申报，不在它的覆盖面里；`run-gates.ts` 底部的门表也是申报——它改过就默认保留（不改动的副本照常升级），覆盖它同样是 `--reset-manifests` 的事。
 
-要重新生成 manifest，用 `--reset-manifests`：它把每一份按当前实测的树重播一遍，**你写在里面的申报会被覆盖**。破坏性动作有自己的名字，就不该是升级的顺带效果——`--force` 曾经连它们一起重置，一次例行升级能让索引与宣称清单变成空文件、注释规则退回起步形状，而采用方不会收到任何提示，门禁只是安静地少管一片地方。
+要重新生成 manifest，用 `--reset-manifests`：它把每一份按当前实测的树重播一遍，门表一并还原成预置的，**你写在里面的申报会被覆盖**。破坏性动作有自己的名字，就不该是升级的顺带效果——`--force` 曾经连它们一起重置，一次例行升级能让索引与宣称清单变成空文件、注释规则退回起步形状，而采用方不会收到任何提示，门禁只是安静地少管一片地方。
 
 加 `--adopt` 时 `--dry-run` 会说明将要录制什么而不实际执行。
 
@@ -104,8 +104,8 @@ node ~/.agents/skills/project-harness/scripts/bootstrap.ts --target ~/myproj --a
 
 ## 升级
 
-skill 更新后，用 `--force` 重跑可以刷新 `scripts/harness/` 下的校验器副本。**这会覆盖你对校验器的本地修改**——如果你改过它们（这很正常，门禁本来就该按仓库定制），先 diff 一下再决定。`--force` 到此为止：manifest 里的申报不受影响，重播它们要显式 `--reset-manifests`。
+skill 更新后，用 `--force` 重跑可以刷新 `scripts/harness/` 下的校验器副本。**这会覆盖你对校验器的本地修改**——如果你改过它们（这很正常，门禁本来就该按仓库定制），先 diff 一下再决定。唯一的例外是门表 `run-gates.ts`：它写的是这个仓库的检查声明，改过就默认保留（没改动的副本照常升级），还原成预置表要显式 `--reset-manifests`；manifest 里的申报同样不受影响。
 
 升级后确认装的是哪一版：`scripts/harness/version.json` 记录复制这些校验器时 skill 的版本，`bootstrap` 的输出行里也会打印。版本号只住在 `skills/VERSION` 一处，两个 skill 一起发版、共用一号；凡是改动 `scripts/`、`SKILL.md`、`references/`、`templates/` 下任何文件，都同批动它——采用方据此回答「我这个仓库装的是哪一版」，而这一问只在出问题时才有人问。
 
-把「校验器副本已按本地需要修改」这件事记在 `scripts/harness/README.md` 里，否则下次升级会丢掉你的改动。
+把「校验器副本已按本地需要修改」这件事记在 `scripts/harness/README.md` 里，否则下次升级会丢掉你的改动；写进门表的采用面不在此列——那是声明，升级不覆盖。

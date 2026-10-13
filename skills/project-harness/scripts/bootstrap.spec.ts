@@ -263,6 +263,62 @@ describe('upgrading with --force', () => {
   })
 })
 
+describe('the gate table under --force', () => {
+  test('an edited gate table survives a refresh, and the rest of the copies still upgrade', () => {
+    // The table declares which checks this repository runs. Refreshing it wholesale
+    // reverts that decision as a side effect of an upgrade, and the adopter learns
+    // about it from a gate that stopped running, not from a report.
+    const target = tracked()
+    const install = spawnSync(process.execPath, [BOOTSTRAP, '--target', target], { encoding: 'utf8' })
+    assert.equal(install.status, 0, String(install.stderr))
+    const table = join(target, 'scripts/harness/run-gates.ts')
+    const mine = `${readFileSync(table, 'utf8')}\n// this repository runs three gates\n`
+    writeFileSync(table, mine)
+    const stale = join(target, 'scripts/harness/verify-md-wrap.ts')
+    writeFileSync(stale, '// stale copy\n')
+
+    const result = spawnSync(process.execPath, [BOOTSTRAP, '--target', target, '--force'], { encoding: 'utf8' })
+    assert.equal(result.status, 0, String(result.stderr))
+    assert.equal(readFileSync(table, 'utf8'), mine, '--force reverted the gate table')
+    assert.equal(
+      readFileSync(stale, 'utf8'),
+      readFileSync(join(SKILL_ROOT, 'scripts/verify-md-wrap.ts'), 'utf8'),
+      'the guard must not stop the other copies from refreshing',
+    )
+    assert.match(result.stdout ?? '', /gate table/)
+  })
+
+  test('an unedited gate table refreshes without a preservation note', () => {
+    // The guard keys on a real difference from the shipped bytes, so a table nobody
+    // touched upgrades with the rest and says nothing.
+    const target = tracked()
+    const install = spawnSync(process.execPath, [BOOTSTRAP, '--target', target], { encoding: 'utf8' })
+    assert.equal(install.status, 0, String(install.stderr))
+
+    const result = spawnSync(process.execPath, [BOOTSTRAP, '--target', target, '--force'], { encoding: 'utf8' })
+    assert.equal(result.status, 0, String(result.stderr))
+    assert.doesNotMatch(result.stdout ?? '', /gate table/)
+    assert.equal(
+      readFileSync(join(target, 'scripts/harness/run-gates.ts'), 'utf8'),
+      readFileSync(join(SKILL_ROOT, 'scripts/run-gates.ts'), 'utf8'),
+    )
+  })
+
+  test('--reset-manifests is what restores the shipped table', () => {
+    const target = tracked()
+    const install = spawnSync(process.execPath, [BOOTSTRAP, '--target', target], { encoding: 'utf8' })
+    assert.equal(install.status, 0, String(install.stderr))
+    const table = join(target, 'scripts/harness/run-gates.ts')
+    writeFileSync(table, '// mine\n')
+
+    const result = spawnSync(process.execPath, [BOOTSTRAP, '--target', target, '--force', '--reset-manifests'], {
+      encoding: 'utf8',
+    })
+    assert.equal(result.status, 0, String(result.stderr))
+    assert.equal(readFileSync(table, 'utf8'), readFileSync(join(SKILL_ROOT, 'scripts/run-gates.ts'), 'utf8'))
+  })
+})
+
 describe('re-seeding with --reset-manifests', () => {
   let target: string
   let result: ReturnType<typeof spawnSync>

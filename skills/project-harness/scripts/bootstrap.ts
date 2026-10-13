@@ -21,6 +21,14 @@ const SKILL_ROOT = resolve(SCRIPT_DIR, '..')
 const AGENT_NOTES_SKILL = resolve(SKILL_ROOT, '../agent-notes/scripts')
 const HARNESS_DIR = 'scripts/harness'
 
+/**
+ * The one copied file that carries the adopter's own declaration — its list of gates.
+ * Every other verifier is refreshed wholesale by `--force`; this one is preserved once
+ * edited, because a check that the repository chose to run must not disappear as a
+ * side effect of an upgrade.
+ */
+const GATE_TABLE = 'run-gates.ts'
+
 /** The bundle version file, one level above this skill's directory. */
 const VERSION_FILE = resolve(SKILL_ROOT, '..', 'VERSION')
 
@@ -168,10 +176,10 @@ function usage(): never {
   console.error('usage: node bootstrap.ts --target <repo> [--adopt] [--dry-run] [--force] [--reset-manifests]')
   console.error('  --adopt            record the violations already in the target as accepted debt,')
   console.error('                     so the Markdown gates fail only on violations added from now on')
-  console.error('  --force            refresh the copied verifiers; the manifests holding your')
-  console.error('                     declarations are preserved')
-  console.error('  --reset-manifests  re-seed the manifests even where they exist, replacing the')
-  console.error('                     declarations in them')
+  console.error('  --force            refresh the copied verifiers; declarations are preserved —')
+  console.error('                     the manifests, and a gate table the target has edited')
+  console.error('  --reset-manifests  re-seed the manifests and the gate table even where they exist,')
+  console.error('                     replacing the declarations in them')
   process.exit(1)
 }
 
@@ -290,6 +298,20 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
     const abs = join(options.target, rel)
     if (existsSync(abs) && !options.force) {
       skipped.push(rel)
+      continue
+    }
+    // The gate table declares which checks THIS repository runs, so refreshing it
+    // would revert that decision the moment an upgrade runs — the same quiet narrowing
+    // the manifests are protected from. An unmodified copy still upgrades with the
+    // rest; replacing an edited one takes the explicit --reset-manifests.
+    if (
+      file === GATE_TABLE &&
+      existsSync(abs) &&
+      !options.resetManifests &&
+      readFileSync(abs, 'utf8') !== readFileSync(source, 'utf8')
+    ) {
+      skipped.push(rel)
+      notes.push(`${GATE_TABLE} holds this repository's gate table and was preserved (--reset-manifests restores the shipped table)`)
       continue
     }
     planned.push(rel)
