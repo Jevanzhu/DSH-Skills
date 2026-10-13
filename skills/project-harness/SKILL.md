@@ -57,7 +57,7 @@ node ~/.agents/skills/project-harness/scripts/bootstrap.ts --target <repo> --ado
 
 门禁是数据对象，不是一堆脚本。每个门禁声明 `needs`（前驱失败则跳过）与 `after`（只排序、不阻塞）两种依赖——这个区分解决真实的并发冲突：一个会重写共享产物的测试不该和读它产物的检查并行，但也不该在它失败时被跳过。
 
-聚合模式（`doc-quick`、`check-all`）让分支保护只要求**一个**稳定的检查名，而不是枚举会随版本变化的矩阵腿。运行器在 [scripts/run-gates.ts](scripts/run-gates.ts)，测试在 [scripts/run-gates.spec.ts](scripts/run-gates.spec.ts)。设计与取舍见 [references/gates.md](references/gates.md)。
+聚合模式（`run-gates.ts` 的 `MODES` 表）让分支保护只要求**一个**稳定的检查名，而不是枚举会随版本变化的矩阵腿。运行器在 [scripts/run-gates.ts](scripts/run-gates.ts)，测试在 [scripts/run-gates.spec.ts](scripts/run-gates.spec.ts)。设计与取舍见 [references/gates.md](references/gates.md)。
 
 ### 提交前的证据选择
 

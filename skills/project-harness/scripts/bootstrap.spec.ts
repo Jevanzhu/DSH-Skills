@@ -90,6 +90,21 @@ describe('bootstrapping a fresh repository', () => {
     assert.match(out, /10 passed, 0 failed, 0 skipped/, out)
   })
 
+  test('runs the modes the starter AGENTS.md tells the adopter to run', () => {
+    // The copied template is the adopter's standing orders: the commands in it are
+    // promises. `check-all` was documented there while the table did not define it, so
+    // both promised modes are run here, on a repository the harness itself set up.
+    for (const mode of ['doc-quick', 'check-all']) {
+      const run = spawnSync(process.execPath, [join(target, 'scripts/harness/run-gates.ts'), mode], {
+        cwd: target,
+        encoding: 'utf8',
+      })
+      const out = `${run.stdout ?? ''}${run.stderr ?? ''}`
+      assert.equal(run.status, 0, `${mode}: ${out}`)
+      assert.match(out, /10 passed, 0 failed, 0 skipped/, out)
+    }
+  })
+
   test('creates the Agent Note lifecycle and archive trees the gates require', () => {
     for (const lifecycle of ['proposed', 'implemented', 'rejected']) {
       for (const cls of ['feature', 'bug-fix', 'simplification', 'architecture', 'process', 'testing']) {

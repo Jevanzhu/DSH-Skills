@@ -410,6 +410,10 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
 Next steps that need your judgment (the harness cannot infer these):
   1. Write AGENTS.md: standing orders only, one to three lines per rule.
   2. Pick the checks this repository must run, then list them in scripts/harness/run-gates.ts.
+     The table ships \`text\` (every text-surface gate — wire it into CI as \`npm run check\`),
+     \`doc-quick\` (text plus the note gates) and \`check-all\` (the full run: add your build,
+     test and platform gates here). The commands in the copied AGENTS.md only hold as long
+     as these modes exist.
   3. Add a package.json script per gate so editors and CI share one entry point.
   4. Install the git hooks (lefthook.yml) and wire the same gates into CI.
   5. To require the archive gate, seal the tree with:

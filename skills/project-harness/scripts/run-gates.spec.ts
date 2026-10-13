@@ -7,8 +7,12 @@
  */
 
 import assert from 'node:assert/strict'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, test } from 'node:test'
 import {
+  MODES,
   findDependencyCycle,
   formatGateReason,
   runFailed,
@@ -167,6 +171,70 @@ process.exit(overlapping ? 1 : 0)`
       assert.deepEqual(results.map(result => result.status), ['passed', 'passed', 'passed'])
     } finally {
       rm(markerDir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('the modes the artifacts promise', () => {
+  const SKILL_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+  const REPO_ROOT = resolve(SKILL_ROOT, '..', '..')
+
+  /** Every Markdown file shipped with the skill, at any depth. */
+  function shippedMarkdown(dir: string): string[] {
+    const found: string[] = []
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const abs = join(dir, entry.name)
+      if (entry.isDirectory()) found.push(...shippedMarkdown(abs))
+      else if (entry.name.endsWith('.md')) found.push(abs)
+    }
+    return found
+  }
+
+  /** The files whose commands are promises: the shipped docs and this repo's scripts. */
+  function promisingFiles(): string[] {
+    const files = shippedMarkdown(SKILL_ROOT)
+    const manifest = join(REPO_ROOT, 'package.json')
+    if (existsSync(manifest)) files.push(manifest)
+    return files
+  }
+
+  test('a mode written as a command in the shipped documents or this repo\'s scripts exists in the table', () => {
+    // The templates are copied into an adopter's repository as its standing orders, so a
+    // command there is a promise: it has to run. Nothing else checks that the promise and
+    // the MODES table still agree — this is how `check-all` came to be documented in four
+    // places while the table did not define it, and how `npm run check` would keep naming
+    // a mode after a rename.
+    const promised = new Map<string, string>()
+    for (const file of promisingFiles()) {
+      const source = readFileSync(file, 'utf8')
+      // Command form, in a document or in a JSON script value: `node …/run-gates.ts <mode>`.
+      for (const match of source.matchAll(/(?:^|[\s"'`])node\s+\S*run-gates\.ts\s+([a-z][a-z0-9-]*)/gm)) {
+        if (match[1] !== undefined) promised.set(match[1], relative(REPO_ROOT, file))
+      }
+    }
+    assert.ok(promised.size > 0, 'no artifact names a mode as a command; the scan or the artifacts moved')
+    for (const [mode, where] of promised) {
+      assert.ok(mode in MODES, `${where} promises \`run-gates.ts ${mode}\`, which MODES does not define (it defines ${Object.keys(MODES).join(', ')})`)
+    }
+  })
+
+  test('check-all is what its name claims: a superset of every other mode', () => {
+    const full = new Set((MODES['check-all'] ?? []).map(entry => entry.id))
+    assert.ok(full.size > 0, 'check-all is missing or empty')
+    for (const [name, gates] of Object.entries(MODES)) {
+      for (const entry of gates) {
+        assert.ok(full.has(entry.id), `${name} runs ${entry.id}, which check-all — the full run — does not`)
+      }
+    }
+  })
+
+  test('a gate resolves its script beside the runner, so a copied table runs the copied gates', () => {
+    for (const gates of Object.values(MODES)) {
+      for (const entry of gates) {
+        for (const argument of entry.args) {
+          assert.ok(isAbsolute(argument), `${entry.id}: ${argument} is not resolved relative to the runner`)
+        }
+      }
     }
   })
 })

@@ -72,7 +72,7 @@ node ~/.agents/skills/project-harness/scripts/bootstrap.ts --target ~/myproj --a
 
 **门禁清单。** `run-gates.ts` 底部的 `MODES` 表就是这个仓库的检查声明。模板里预置了文档门禁；其余要你按技术栈填。填的时候读一遍 [gates.md](gates.md) 的检查表——特别是「跑一次确认它真的会失败」。
 
-**package.json 脚本。** 每个门禁最好有一个 npm script 名字，让编辑器、CI 和人都走同一个入口。聚合名（`check-all`、`doc-quick`）由 package.json 拥有，门禁图拥有它们之间的依赖关系。
+**package.json 脚本。** 每个门禁最好有一个 npm script 名字，让编辑器、CI 和人都走同一个入口。**聚合本身住在门禁表的 `MODES` 里，package.json 只是它的壳**：`"check": "node scripts/harness/run-gates.ts text"` 这样的脚本不再自己列门禁，于是成员名单只有一处，加规则时不会漏掉某一条入口。门的依赖关系由门禁图拥有。
 
 **提交钩子。** 模板的 `lefthook.yml` 只放了几条立刻能修的小事。**不要往钩子里加测试和构建**——它会让开发者学会用 `--no-verify`，而一个被绕过的钩子比没有钩子更糟，因为它制造了「有检查」的错觉。
 

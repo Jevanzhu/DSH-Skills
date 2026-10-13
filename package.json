@@ -9,6 +9,6 @@
   },
   "scripts": {
     "test": "node --test scripts/structure.spec.ts skills/agent-notes/scripts/gates.spec.ts skills/project-harness/scripts/bootstrap.spec.ts skills/project-harness/scripts/baseline.spec.ts skills/project-harness/scripts/run-gates.spec.ts skills/project-harness/scripts/verify-doc-index.spec.ts skills/project-harness/scripts/verify-comment-hygiene.spec.ts skills/project-harness/scripts/verify-test-hygiene.spec.ts skills/project-harness/scripts/verify-doc-claims.spec.ts",
-    "check": "node skills/project-harness/scripts/verify-md-links.ts && node skills/project-harness/scripts/verify-md-wrap.ts && node skills/project-harness/scripts/verify-doc-index.ts && node skills/project-harness/scripts/verify-comment-hygiene.ts && node skills/project-harness/scripts/verify-test-hygiene.ts && node skills/project-harness/scripts/verify-doc-claims.ts"
+    "check": "node skills/project-harness/scripts/run-gates.ts text --stream"
   }
 }

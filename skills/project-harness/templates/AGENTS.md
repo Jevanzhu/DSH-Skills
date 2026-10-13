@@ -35,7 +35,7 @@ standing orders 层：只写「每次会话都需要在上下文里的规则」�
 
 ```sh
 node scripts/harness/run-gates.ts doc-quick   # 秒级，文档与决策记录
-node scripts/harness/run-gates.ts check-all   # 全量
+node scripts/harness/run-gates.ts check-all   # 全量：把构建、测试、平台门加进这个模式
 ```
 
 分支保护只要求一个聚合检查名。**门禁失败时不要绕过它**——要么改代码，要么在评审里论证门禁本身错了。

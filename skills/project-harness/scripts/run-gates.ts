@@ -10,6 +10,8 @@
  */
 
 import { spawn } from 'node:child_process'
+import { dirname, join, relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 /** One check in the graph. */
 export interface Gate {
@@ -262,7 +264,19 @@ export function printSummary(results: readonly GateResult[]): void {
 // The gate table. Edit this to declare what this repository checks.
 // ---------------------------------------------------------------------------
 
-const HARNESS = 'scripts/harness'
+/**
+ * Where the verifiers live: beside this file. The same table therefore runs in both
+ * layouts — the skill source tree (`skills/<skill>/scripts/`) and the installed tree
+ * (`scripts/harness/`) — and a copy always runs the copy's own gates. A fixed path
+ * would make the source checkout run nothing but "cannot find module".
+ */
+const HARNESS = dirname(fileURLToPath(import.meta.url))
+
+/** A gate's argument as the caller would write it: relative when it lies below cwd. */
+function displayPath(argument: string): string {
+  const shown = relative(process.cwd(), argument)
+  return shown === '' || shown.startsWith('..') ? argument : shown
+}
 
 /** Agent Note corpus rules: paths, filenames, headers, and lifecycle sections. */
 const noteGates: Gate[] = [
@@ -270,21 +284,21 @@ const noteGates: Gate[] = [
     id: 'agent-note-classification',
     label: 'Agent Note classification',
     command: 'node',
-    args: [`${HARNESS}/verify-agent-note-classification.ts`],
+    args: [join(HARNESS, 'verify-agent-note-classification.ts')],
     quick: true,
   },
   {
     id: 'agent-note-format',
     label: 'Agent Note format',
     command: 'node',
-    args: [`${HARNESS}/verify-agent-note-format.ts`],
+    args: [join(HARNESS, 'verify-agent-note-format.ts')],
     quick: true,
   },
   {
     id: 'archived-agent-notes',
     label: 'Frozen archive seals',
     command: 'node',
-    args: [`${HARNESS}/verify-archived-agent-notes.ts`],
+    args: [join(HARNESS, 'verify-archived-agent-notes.ts')],
     quick: true,
   },
 ]
@@ -295,21 +309,28 @@ const noteGates: Gate[] = [
  * branch protection on an already-installed repository keeps pointing at one check.
  */
 const textGates: Gate[] = [
-  { id: 'markdown-links', label: 'Markdown links and anchors', command: 'node', args: [`${HARNESS}/verify-md-links.ts`], quick: true },
-  { id: 'markdown-wrap', label: 'One paragraph per line', command: 'node', args: [`${HARNESS}/verify-md-wrap.ts`], quick: true },
-  { id: 'doc-budgets', label: 'Documentation word budgets', command: 'node', args: [`${HARNESS}/verify-doc-budgets.ts`], quick: true },
-  { id: 'doc-index', label: 'Document chain index', command: 'node', args: [`${HARNESS}/verify-doc-index.ts`], quick: true },
-  { id: 'comment-hygiene', label: 'Comment hygiene', command: 'node', args: [`${HARNESS}/verify-comment-hygiene.ts`], quick: true },
-  { id: 'test-hygiene', label: 'Focused and skipped tests', command: 'node', args: [`${HARNESS}/verify-test-hygiene.ts`], quick: true },
-  { id: 'doc-claims', label: 'Documented claims versus their sources', command: 'node', args: [`${HARNESS}/verify-doc-claims.ts`], quick: true },
+  { id: 'markdown-links', label: 'Markdown links and anchors', command: 'node', args: [join(HARNESS, 'verify-md-links.ts')], quick: true },
+  { id: 'markdown-wrap', label: 'One paragraph per line', command: 'node', args: [join(HARNESS, 'verify-md-wrap.ts')], quick: true },
+  { id: 'doc-budgets', label: 'Documentation word budgets', command: 'node', args: [join(HARNESS, 'verify-doc-budgets.ts')], quick: true },
+  { id: 'doc-index', label: 'Document chain index', command: 'node', args: [join(HARNESS, 'verify-doc-index.ts')], quick: true },
+  { id: 'comment-hygiene', label: 'Comment hygiene', command: 'node', args: [join(HARNESS, 'verify-comment-hygiene.ts')], quick: true },
+  { id: 'test-hygiene', label: 'Focused and skipped tests', command: 'node', args: [join(HARNESS, 'verify-test-hygiene.ts')], quick: true },
+  { id: 'doc-claims', label: 'Documented claims versus their sources', command: 'node', args: [join(HARNESS, 'verify-doc-claims.ts')], quick: true },
 ]
 
 /**
- * Named aggregates. `doc-quick` needs no build and is the fast loop; add a
- * repository-specific mode for whatever else this project must check.
+ * Named aggregates. `doc-quick` still carries the historic name; `text` is the
+ * text-surface set a repository runs on every change (`npm run check` points here, so
+ * the gate table stays the single place that list is declared); `check-all` is the full
+ * run — the extension point a repository adds its build and test gates to. It contains
+ * everything the harness ships, and nothing else, so today it lists the same gates as
+ * `doc-quick`; the spec pins it as a superset of every other mode, which is what its
+ * name claims.
  */
 export const MODES: Readonly<Record<string, readonly Gate[]>> = {
   'doc-quick': [...noteGates, ...textGates],
+  text: textGates,
+  'check-all': [...noteGates, ...textGates],
   'agent-notes': noteGates,
 }
 
@@ -343,7 +364,7 @@ async function main(): Promise<void> {
   if (listOnly) {
     for (const gate of gates) {
       const marks = [gate.quick === true ? 'quick' : '', gate.allowFailure === true ? 'allow-failure' : ''].filter(Boolean).join(',')
-      console.log(`${gate.id.padEnd(28)} ${gate.command} ${gate.args.join(' ')}${marks === '' ? '' : `  [${marks}]`}`)
+      console.log(`${gate.id.padEnd(28)} ${gate.command} ${gate.args.map(displayPath).join(' ')}${marks === '' ? '' : `  [${marks}]`}`)
     }
     return
   }
