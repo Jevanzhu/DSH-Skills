@@ -8,8 +8,9 @@ description: >-
   script, enforcing documentation standards, word budgets, or comment hygiene,
   reviewing a pull request, choosing between merge-forward and rebase, working with
   stacked or dependent PRs, or discussing error-handling and test-flakiness policy.
-  Also use when an agent keeps ignoring project rules, or when local checks and CI
-  disagree about what "passing" means.
+  Also use when an agent keeps ignoring project rules, when local checks and CI
+  disagree about what "passing" means, or when briefing agents — task targets,
+  acceptance criteria, what not to read, fan-out limits.
 ---
 
 # Project Harness
@@ -103,6 +104,10 @@ node ~/.agents/skills/project-harness/scripts/bootstrap.ts --target <repo> --ado
 
 并发下非确定性失败的根因分类与修法。核心是**拒绝掩盖型修复**——加长超时、加重试、跳过的测试不是修好了，只是不再报告问题。两条配套纪律：**先判该不该写**（一条改动 = 一条回退即变红的用例；断言只锚对外可观察面），**表面绿而覆盖消失是门禁的事**（`.only` 一律红，无条件 `.skip` 红，条件式环境门合法——`verify-test-hygiene.ts`）。见 [references/test-reliability.md](references/test-reliability.md)。
 
+### Agent 工作纪律
+
+派活与动手的判据，多数以文字存在而不是门禁（能机器判定的部分已落到别处）。**任务书三件**——靶点、验收判据、不读面，缺件先问再动：agent 的真实成本不是输入贵，而是范围无界。**先定位后阅读**：检索定靶 → 只读命中文件与一跳调用方，结论锚 `file:line`，不写阅读流水账；确需通读先报范围与理由。**通读即专项**：只在作者明示的审计任务下成立，审计只产报告、修复另开靶向任务。**子 agent 单波 ≤4**：上限跟复核能力绑定，不跟核数绑定。**一个批一个主题**：挂账项与待拍板各自成批，夹带的另开批。**提交与对外文案**不引作者指令原文，决策以结论转述。见 [references/agent-work.md](references/agent-work.md)。
+
 ### 历史与归档
 
 PR 历史怎么组织、堆叠 PR 怎么落地、什么时候 merge-forward 什么时候 rebase、重写历史的纪律。最硬的一条：`Raw --force is never allowed`，改写必须用带 lease 的形式并在远端移动时中止。见 [references/history.md](references/history.md)。
@@ -117,7 +122,7 @@ PR 历史怎么组织、堆叠 PR 怎么落地、什么时候 merge-forward 什�
 
 ## 责任边界
 
-本 skill 拥有**文档层级与文档链、注释卫生、门禁、评审、错误处理、测试可靠性、历史与发布纪律**。
+本 skill 拥有**文档层级与文档链、注释卫生、门禁、评审、错误处理、测试可靠性、历史与发布纪律、agent 派发与阅读纪律**。
 
 决策记录的格式、生命周期与归档属于 `agent-notes` skill。两者都涉及 `.agents/` 下的内容：写决策记录时用 `agent-notes`，制定「规则住在哪个文件」时用本 skill。
 
