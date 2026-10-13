@@ -37,6 +37,8 @@ node ~/.agents/skills/project-harness/scripts/bootstrap.ts --target <repo> [--dr
 
 它会建好 Agent Note 生命周期树与归档清单、按目标仓库实测词数算出文档预算、把校验器复制到 `<target>/scripts/harness/`（**复制而非引用**——CI 和任何 clone 者必须能独立跑门禁），并列出需要你决策的剩余步骤。详细流程见 [references/bootstrap.md](references/bootstrap.md)。
 
+**运行要求：Node ≥ 24**（门禁是 TypeScript 源文件直跑，靠 Node 的类型剥离特性）。版本下限的声明点是 `package.json` 的 `engines`，这里写的是副本。别把版本当成「装的时候对一次」的事：校验器副本不随 skill 自更新，而偏旧的 Node 上有些组合会让门禁**静默退出 0** 而不是报错——判断手上这一套装的是哪一版，看 `scripts/harness/version.json`。见 [references/gates.md](references/gates.md) 的「入口判断与运行版本」。
+
 ## 已有项目：别砸红墙
 
 **目标仓库已经有内容时，加 `--adopt`。**

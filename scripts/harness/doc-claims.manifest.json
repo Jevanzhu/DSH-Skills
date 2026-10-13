@@ -23,6 +23,20 @@
       "kind": "list",
       "doc": "README.md",
       "command": ["node", "-e", "for (const entry of require('fs').readdirSync('skills', { withFileTypes: true })) if (entry.isDirectory()) console.log(entry.name)"]
+    },
+    {
+      "name": "发行版本",
+      "kind": "list",
+      "doc": "README.md",
+      "command": ["node", "-e", "console.log(require('fs').readFileSync('skills/VERSION', 'utf8').trim())"]
+    },
+    {
+      "name": "Node 下限",
+      "kind": "count",
+      "doc": "skills/project-harness/SKILL.md",
+      "command": ["node", "-e", "console.log(/[>]=?(\\d+)/.exec(require('./package.json').engines.node)[1])"],
+      "expect": "equal",
+      "pattern": "Node ≥ (\\d+)"
     }
   ]
 }

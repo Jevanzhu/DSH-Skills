@@ -28,7 +28,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { CommentLine, ScanSpec } from './surface.ts'
 import { commentLines, scanSurface } from './surface.ts'
-import { resolveRepoRoot } from './harness-root.ts'
+import { isEntryPoint, resolveRepoRoot } from './harness-root.ts'
 import { reportBaseline, runBaselineGate } from './baseline.ts'
 
 const MANIFEST_REL = 'scripts/harness/comment-hygiene.manifest.json'
@@ -350,4 +350,4 @@ function main(): void {
   process.exit(1)
 }
 
-if (import.meta.main) main()
+if (isEntryPoint(import.meta.url)) main()

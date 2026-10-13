@@ -25,7 +25,7 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { proseLines } from './markdown.ts'
-import { resolveRepoRoot } from './harness-root.ts'
+import { isEntryPoint, resolveRepoRoot } from './harness-root.ts'
 
 const MANIFEST_REL = 'scripts/harness/doc-claims.manifest.json'
 
@@ -294,4 +294,4 @@ function main(): void {
   process.exit(1)
 }
 
-if (import.meta.main) main()
+if (isEntryPoint(import.meta.url)) main()

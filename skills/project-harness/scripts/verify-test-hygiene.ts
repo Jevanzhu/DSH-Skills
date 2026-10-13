@@ -25,7 +25,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { ScanSpec } from './surface.ts'
 import { codeSurface, scanSurface } from './surface.ts'
-import { resolveRepoRoot } from './harness-root.ts'
+import { isEntryPoint, resolveRepoRoot } from './harness-root.ts'
 import { reportBaseline, runBaselineGate } from './baseline.ts'
 
 const MANIFEST_REL = 'scripts/harness/test-hygiene.manifest.json'
@@ -295,4 +295,4 @@ function main(): void {
   process.exit(1)
 }
 
-if (import.meta.main) main()
+if (isEntryPoint(import.meta.url)) main()

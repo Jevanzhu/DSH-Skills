@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { proseLines } from './markdown.ts'
 import { markdownFiles } from './verify-md-links.ts'
-import { resolveRepoRoot } from './harness-root.ts'
+import { isEntryPoint, resolveRepoRoot } from './harness-root.ts'
 import { reportBaseline, runBaselineGate } from './baseline.ts'
 
 /** A prose line that should have been joined with the next one. */
@@ -114,4 +114,4 @@ function main(): void {
   process.exit(1)
 }
 
-if (import.meta.main) main()
+if (isEntryPoint(import.meta.url)) main()

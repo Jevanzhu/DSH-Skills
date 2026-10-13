@@ -8,8 +8,10 @@
  */
 
 import assert from 'node:assert/strict'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { spawnSync } from 'node:child_process'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, test } from 'node:test'
 
@@ -51,6 +53,42 @@ describe('repository structure', () => {
       for (const locale of ['en', 'zh']) {
         assert.ok(templates.includes(`${lifecycle}.${locale}.md`), `templates/${lifecycle}.${locale}.md is missing`)
       }
+    }
+  })
+})
+
+describe('every shipped gate runs when it is invoked', () => {
+  /** Every verifier in every skill, found rather than listed, so a new gate joins this test. */
+  const verifiers = SKILLS.flatMap(skill =>
+    readdirSync(join(SKILLS_ROOT, skill, 'scripts'))
+      .filter(name => name.startsWith('verify-') && name.endsWith('.ts') && !name.includes('.spec.'))
+      .map(name => join(SKILLS_ROOT, skill, 'scripts', name)),
+  )
+
+  test('the scan found the verifiers rather than an empty list', () => {
+    assert.ok(verifiers.length >= 10, `expected the shipped verifiers, found ${verifiers.length}`)
+  })
+
+  test('an invoked verifier reports itself instead of exiting green in silence', () => {
+    // The guard that decides whether a gate runs at all must not read a runtime feature:
+    // `import.meta.main` does not exist below Node 24.2 / 22.18, and where it is missing
+    // the old guard answered "not the entry point", so the gate exited 0 having checked
+    // nothing. Every gate therefore has to prove, by running in a bare directory, that
+    // being invoked actually reaches its own report line.
+    const root = mkdtempSync(join(tmpdir(), 'harness-entry-'))
+    try {
+      for (const verifier of verifiers) {
+        const name = basename(verifier, '.ts')
+        const run = spawnSync(process.execPath, [verifier], { cwd: root, encoding: 'utf8' })
+        const output = `${run.stdout ?? ''}${run.stderr ?? ''}`
+        assert.match(
+          output,
+          new RegExp(`${name}:`),
+          `${name} produced no report line when invoked directly — its entry guard answered false (exit ${String(run.status)})`,
+        )
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true })
     }
   })
 })

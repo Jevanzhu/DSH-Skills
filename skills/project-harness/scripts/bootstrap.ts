@@ -5,7 +5,9 @@
  *
  * Verifiers are COPIED, never referenced: a gate must run in a fresh clone and in CI
  * without this skill installed. Re-run with `--force` to refresh the copies after
- * upgrading the harness.
+ * upgrading the harness. Refreshing stops at the copies: every manifest carries the
+ * adopter's own declarations, so re-seeding them takes the separate
+ * `--reset-manifests`, never a side effect of an upgrade.
  */
 
 import { spawnSync } from 'node:child_process'
@@ -18,6 +20,22 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const SKILL_ROOT = resolve(SCRIPT_DIR, '..')
 const AGENT_NOTES_SKILL = resolve(SKILL_ROOT, '../agent-notes/scripts')
 const HARNESS_DIR = 'scripts/harness'
+
+/** The bundle version file, one level above this skill's directory. */
+const VERSION_FILE = resolve(SKILL_ROOT, '..', 'VERSION')
+
+/**
+ * The version of the bundle these verifiers were copied from. A copy without the
+ * version file still installs — the gates do not depend on it — but the record then
+ * says `unknown`, which is the honest answer to "what did we install".
+ */
+function bundleVersion(): string {
+  try {
+    return readFileSync(VERSION_FILE, 'utf8').trim() || 'unknown'
+  } catch {
+    return 'unknown'
+  }
+}
 
 /**
  * Gates that can record day-one debt. Adopting the harness on a repository that
@@ -139,14 +157,21 @@ links this tree makes to the outside are not, because they may be stale by desig
 interface Options {
   target: string
   dryRun: boolean
+  /** Refresh the copied verifiers. Never touches the manifests that hold declarations. */
   force: boolean
+  /** Re-seed the manifests even where they already exist — destructive, so its own flag. */
+  resetManifests: boolean
   adopt: boolean
 }
 
 function usage(): never {
-  console.error('usage: node bootstrap.ts --target <repo> [--adopt] [--dry-run] [--force]')
-  console.error('  --adopt   record the violations already in the target as accepted debt,')
-  console.error('            so the Markdown gates fail only on violations added from now on')
+  console.error('usage: node bootstrap.ts --target <repo> [--adopt] [--dry-run] [--force] [--reset-manifests]')
+  console.error('  --adopt            record the violations already in the target as accepted debt,')
+  console.error('                     so the Markdown gates fail only on violations added from now on')
+  console.error('  --force            refresh the copied verifiers; the manifests holding your')
+  console.error('                     declarations are preserved')
+  console.error('  --reset-manifests  re-seed the manifests even where they exist, replacing the')
+  console.error('                     declarations in them')
   process.exit(1)
 }
 
@@ -154,6 +179,7 @@ function parseArgs(argv: readonly string[]): Options {
   let target: string | undefined
   let dryRun = false
   let force = false
+  let resetManifests = false
   let adopt = false
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
@@ -163,11 +189,12 @@ function parseArgs(argv: readonly string[]): Options {
       if (target === undefined) usage()
     } else if (arg === '--dry-run') dryRun = true
     else if (arg === '--force') force = true
+    else if (arg === '--reset-manifests') resetManifests = true
     else if (arg === '--adopt') adopt = true
     else usage()
   }
   if (target === undefined) usage()
-  return { target: resolve(target), dryRun, force, adopt }
+  return { target: resolve(target), dryRun, force, resetManifests, adopt }
 }
 
 /** Count whitespace-delimited tokens, matching `wc -w`. */
@@ -204,9 +231,9 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
   const skipped: string[] = []
   const notes: string[] = []
 
-  const write = (relPath: string, content: string | Buffer): void => {
+  const write = (relPath: string, content: string | Buffer, overwrite = false): void => {
     const abs = join(options.target, relPath)
-    if (existsSync(abs) && !options.force) {
+    if (existsSync(abs) && !options.force && !overwrite) {
       skipped.push(relPath)
       return
     }
@@ -255,7 +282,8 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
     skipped.push(NOTES_CONFIG)
   }
 
-  // 3. Copy the verifiers so gates run in a fresh clone with no skill installed.
+  // 3. Copy the verifiers so gates run in a fresh clone with no skill installed, and
+  // record the bundle version they came from alongside them.
   for (const [file, sourceDir] of VERIFIER_FILES) {
     const source = join(sourceDir, file)
     const rel = join(HARNESS_DIR, file)
@@ -271,6 +299,21 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
     }
   }
 
+  // The version record is installer metadata, not an adopter declaration: it is
+  // rewritten whenever its content changes, so it always answers which bundle is
+  // installed. Reported only when it changes, so a re-run stays quiet.
+  const version = bundleVersion()
+  const versionRecord = join(HARNESS_DIR, 'version.json')
+  const versionContent = `${JSON.stringify({ version }, null, 2)}\n`
+  const versionAbs = join(options.target, versionRecord)
+  if (!existsSync(versionAbs) || readFileSync(versionAbs, 'utf8') !== versionContent) {
+    planned.push(versionRecord)
+    if (!options.dryRun) {
+      mkdirSync(dirname(versionAbs), { recursive: true })
+      writeFileSync(versionAbs, versionContent)
+    }
+  }
+
   // 4. Seed the doc-budget manifest from the target's measured word counts.
   //
   // This runs BEFORE the templates are copied, on purpose: measuring a freshly copied
@@ -278,7 +321,7 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
   // too-low ceiling is a budget bug". A repository whose only standing docs are the
   // templates therefore starts with an empty manifest and seeds it on a later run.
   const budgetPath = join(options.target, HARNESS_DIR, 'doc-budgets.manifest.json')
-  if (existsSync(budgetPath) && !options.force) {
+  if (existsSync(budgetPath) && !options.resetManifests) {
     skipped.push(relative(options.target, budgetPath))
   } else {
     const budgets: Record<string, number> = {}
@@ -292,29 +335,32 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
       notes.push(`no standing documents to measure yet (${BUDGET_CANDIDATES.join(', ')}); the budget manifest starts empty`)
       notes.push('once AGENTS.md and the other standing docs have real content, re-run bootstrap to seed their ceilings')
     }
-    write(join(HARNESS_DIR, 'doc-budgets.manifest.json'), `${JSON.stringify(budgets, null, 2)}\n`)
+    write(join(HARNESS_DIR, 'doc-budgets.manifest.json'), `${JSON.stringify(budgets, null, 2)}\n`, options.resetManifests)
   }
 
   // 5. Seed the document-chain manifest empty. `{}` declares no chain, so the index
   // gate passes until this repository writes an index and declares its slots; the
   // gate's "no manifest" error then stays reserved for a repository that deleted it.
   const docIndexPath = join(options.target, HARNESS_DIR, 'doc-index.manifest.json')
-  if (existsSync(docIndexPath) && !options.force) {
+  if (existsSync(docIndexPath) && !options.resetManifests) {
     skipped.push(relative(options.target, docIndexPath))
   } else {
-    write(join(HARNESS_DIR, 'doc-index.manifest.json'), '{}\n')
-    notes.push('doc-index.manifest.json declares no chain yet; start from templates/ledger.md and templates/docs-index.md when this repository keeps an indexed document chain')
+    write(join(HARNESS_DIR, 'doc-index.manifest.json'), '{}\n', options.resetManifests)
+    // Named by absolute path: these templates live in the skill, not in the target,
+    // so a relative-looking path would send the reader looking for a file that is not
+    // there. They are deliberately not copied — the chain slots are a judgement call.
+    notes.push(`doc-index.manifest.json declares no chain yet; when this repository keeps an indexed document chain, start it from ${join(SKILL_ROOT, 'templates')} (ledger.md, docs-index.md)`)
   }
 
   // 6. Seed the comment rules against the target's own tree. Which candidate roots
   // exist is measured rather than guessed: the gate fails closed on a declared root
   // that is missing, so the seed never writes one.
   const commentPath = join(options.target, HARNESS_DIR, 'comment-hygiene.manifest.json')
-  if (existsSync(commentPath) && !options.force) {
+  if (existsSync(commentPath) && !options.resetManifests) {
     skipped.push(relative(options.target, commentPath))
   } else {
     const scan = COMMENT_SCAN_CANDIDATES.filter(candidate => existsSync(join(options.target, candidate)))
-    write(join(HARNESS_DIR, 'comment-hygiene.manifest.json'), `${JSON.stringify({ scan, ...COMMENT_HYGIENE_STARTER }, null, 2)}\n`)
+    write(join(HARNESS_DIR, 'comment-hygiene.manifest.json'), `${JSON.stringify({ scan, ...COMMENT_HYGIENE_STARTER }, null, 2)}\n`, options.resetManifests)
     notes.push(`comment-hygiene scans ${scan.join(', ')} for the starter shapes; add a root to the manifest when code lands elsewhere, and register a real term that collides with a shape as an exception`)
   }
 
@@ -322,15 +368,15 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
   // With none of them present, `{}` declares no test surface: the gate's fail-closed
   // "scanned nothing" rule must never fire on a repository that has no tests yet.
   const testPath = join(options.target, HARNESS_DIR, 'test-hygiene.manifest.json')
-  if (existsSync(testPath) && !options.force) {
+  if (existsSync(testPath) && !options.resetManifests) {
     skipped.push(relative(options.target, testPath))
   } else {
     const scan = TEST_SCAN_CANDIDATES.filter(candidate => existsSync(join(options.target, candidate)))
     if (scan.length === 0) {
-      write(join(HARNESS_DIR, 'test-hygiene.manifest.json'), '{}\n')
+      write(join(HARNESS_DIR, 'test-hygiene.manifest.json'), '{}\n', options.resetManifests)
       notes.push(`no test directory found (${TEST_SCAN_CANDIDATES.join(', ')}); the test-hygiene manifest starts empty — declare the root when tests land, including a source tree if tests sit next to the code`)
     } else {
-      write(join(HARNESS_DIR, 'test-hygiene.manifest.json'), `${JSON.stringify({ scan }, null, 2)}\n`)
+      write(join(HARNESS_DIR, 'test-hygiene.manifest.json'), `${JSON.stringify({ scan }, null, 2)}\n`, options.resetManifests)
       notes.push(`test-hygiene scans ${scan.join(', ')} for focused runs and titled skips`)
     }
   }
@@ -339,10 +385,10 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
   // numbers a document states, and which command decides them, is the adopter's
   // judgement. `{}` declares none, so the gate stays quiet until that judgement lands.
   const claimsPath = join(options.target, HARNESS_DIR, 'doc-claims.manifest.json')
-  if (existsSync(claimsPath) && !options.force) {
+  if (existsSync(claimsPath) && !options.resetManifests) {
     skipped.push(relative(options.target, claimsPath))
   } else {
-    write(join(HARNESS_DIR, 'doc-claims.manifest.json'), '{}\n')
+    write(join(HARNESS_DIR, 'doc-claims.manifest.json'), '{}\n', options.resetManifests)
     notes.push('doc-claims.manifest.json declares no claims yet; when a document states a number or a list a command can measure (how many gates, which directories), declare the claim so a stale copy fails the gate')
   }
 
@@ -397,11 +443,15 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
   }
 
   const verb = options.dryRun ? 'would create' : 'created'
-  console.log(`harness bootstrap: ${planned.length} path(s) ${verb} in ${options.target}`)
+  console.log(`harness bootstrap: v${version}, ${planned.length} path(s) ${verb} in ${options.target}`)
   for (const path of planned) console.log(`  + ${path}`)
   if (skipped.length > 0) {
-    console.log(`preserved ${skipped.length} existing path(s)${options.force ? '' : ' (pass --force to overwrite)'}:`)
+    const hint = options.force ? '' : ' (pass --force to refresh the copied verifiers)'
+    console.log(`preserved ${skipped.length} existing path(s)${hint}:`)
     for (const path of skipped) console.log(`  = ${path}`)
+  }
+  if (options.force && !options.resetManifests) {
+    notes.push('--force refreshed the copied verifiers only; the manifests holding your declarations were preserved (--reset-manifests re-seeds them)')
   }
   for (const line of adopted) console.log(`adopted: ${line}`)
   for (const note of notes) console.log(`note: ${note}`)
@@ -419,8 +469,8 @@ Next steps that need your judgment (the harness cannot infer these):
   5. To require the archive gate, seal the tree with:
        node ${HARNESS_DIR}/verify-archived-agent-notes.ts --write
   6. If this repository keeps an indexed document chain (an index document, slot
-     directories, a ledger of open items), start it from templates/ledger.md and
-     templates/docs-index.md, then declare the slots in
+     directories, a ledger of open items), start it from ${join(SKILL_ROOT, 'templates', 'ledger.md')}
+     and ${join(SKILL_ROOT, 'templates', 'docs-index.md')}, then declare the slots in
      ${HARNESS_DIR}/doc-index.manifest.json.
   7. When a document states a number or a list a command can measure (how many gates
      run, which directories exist), declare it in ${HARNESS_DIR}/doc-claims.manifest.json

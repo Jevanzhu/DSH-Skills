@@ -10,7 +10,7 @@
 
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -47,7 +47,7 @@ describe('bootstrapping a fresh repository', () => {
 
   test('succeeds and reports what it created', () => {
     assert.equal(result.status, 0, String(result.stderr))
-    assert.match(result.stdout ?? '', /harness bootstrap: \d+ path\(s\) created/)
+    assert.match(result.stdout ?? '', /harness bootstrap: v\d+\.\d+\.\d+, \d+ path\(s\) created/)
   })
 
   test('copies every verifier the gate list runs', () => {
@@ -170,6 +170,147 @@ describe('bootstrapping a fresh repository', () => {
     assert.equal(again.status, 0, String(again.stderr))
     assert.match(again.stdout ?? '', /preserved \d+ existing path/)
     assert.match(readFileSync(join(target, 'AGENTS.md'), 'utf8'), /<!-- local edit -->/)
+  })
+
+  test('records the bundle version, so the target can say what it installed', () => {
+    const version = readFileSync(join(SKILL_ROOT, '..', 'VERSION'), 'utf8').trim()
+    assert.match(version, /^\d+\.\d+\.\d+$/, `skills/VERSION holds ${JSON.stringify(version)}`)
+    assert.deepEqual(JSON.parse(readFileSync(join(target, 'scripts/harness/version.json'), 'utf8')), { version })
+    assert.match(result.stdout ?? '', new RegExp(`harness bootstrap: v${version.replaceAll('.', '\\.')},`))
+  })
+
+  test('rewrites the version record when the installed bundle changed', () => {
+    // Installer metadata rather than an adopter declaration: it follows its content,
+    // so the record cannot drift from the copies actually sitting in the target.
+    const record = join(target, 'scripts/harness/version.json')
+    writeFileSync(record, '{\n  "version": "0.0.0"\n}\n')
+    const run = spawnSync(process.execPath, [BOOTSTRAP, '--target', target], { encoding: 'utf8' })
+    assert.equal(run.status, 0, String(run.stderr))
+    assert.match(run.stdout ?? '', /^ {2}\+ scripts[\\/]harness[\\/]version\.json$/m)
+    assert.deepEqual(JSON.parse(readFileSync(record, 'utf8')), {
+      version: readFileSync(join(SKILL_ROOT, '..', 'VERSION'), 'utf8').trim(),
+    })
+  })
+
+  test('points at templates on paths that resolve', () => {
+    // The chain templates are deliberately not copied into the target, so a mention
+    // that reads as target-relative sends the reader looking for a file that is not
+    // there. Every template the output names must exist in this skill's templates/.
+    const mentioned = [...(result.stdout ?? '').matchAll(/templates[\\/]([A-Za-z0-9_.-]+\.(?:md|yml))/g)].map(match => match[1])
+    assert.ok(mentioned.length >= 2, `the output names no template: ${result.stdout ?? ''}`)
+    for (const name of new Set(mentioned)) {
+      assert.ok(existsSync(join(SKILL_ROOT, 'templates', name)), `${name} is named in the output but not shipped`)
+    }
+  })
+})
+
+/** Content that marks a manifest as the adopter's own, so an overwrite is visible. */
+const MINE = '{"__mine__": 1}\n'
+
+/** The manifests bootstrap seeds; every one of them carries adopter declarations. */
+const SEEDED_MANIFESTS = [
+  'doc-budgets.manifest.json',
+  'doc-index.manifest.json',
+  'comment-hygiene.manifest.json',
+  'test-hygiene.manifest.json',
+  'doc-claims.manifest.json',
+] as const
+
+/** An installation that has been used since: edited copies plus real declarations. */
+function usedInstallation(): string {
+  const target = tracked()
+  const install = spawnSync(process.execPath, [BOOTSTRAP, '--target', target], { encoding: 'utf8' })
+  assert.equal(install.status, 0, String(install.stderr))
+  writeFileSync(join(target, 'scripts/harness/verify-md-wrap.ts'), '// locally customised\n')
+  writeFileSync(join(target, 'AGENTS.md'), '# Mine\n')
+  for (const manifest of SEEDED_MANIFESTS) writeFileSync(join(target, 'scripts/harness', manifest), MINE)
+  return target
+}
+
+describe('upgrading with --force', () => {
+  let target: string
+  let result: ReturnType<typeof spawnSync>
+
+  before(() => {
+    target = usedInstallation()
+    result = spawnSync(process.execPath, [BOOTSTRAP, '--target', target, '--force'], { encoding: 'utf8' })
+  })
+
+  test('refreshes every copied verifier back to the shipped bytes', () => {
+    assert.equal(result.status, 0, String(result.stderr))
+    for (const entry of readdirSync(join(target, 'scripts/harness'))) {
+      if (!entry.endsWith('.ts')) continue
+      const shipped = [join(SKILL_ROOT, 'scripts', entry), join(SKILL_ROOT, '..', 'agent-notes', 'scripts', entry)]
+        .find(candidate => existsSync(candidate))
+      assert.ok(shipped !== undefined, `${entry} sits in the target but ships in neither skill`)
+      assert.equal(
+        readFileSync(join(target, 'scripts/harness', entry), 'utf8'),
+        readFileSync(shipped, 'utf8'),
+        `${entry} was not refreshed`,
+      )
+    }
+  })
+
+  test('leaves the declarations in every manifest untouched', () => {
+    // The manifests are where the adopter's judgement lives: which numbers a document
+    // states, which roots the comment gate scans. An upgrade that resets them quietly
+    // narrows the gates, and nothing downstream reports it.
+    for (const manifest of SEEDED_MANIFESTS) {
+      assert.equal(readFileSync(join(target, 'scripts/harness', manifest), 'utf8'), MINE, `${manifest} was reset by --force`)
+    }
+    assert.equal(readFileSync(join(target, 'AGENTS.md'), 'utf8'), '# Mine\n')
+    assert.match(result.stdout ?? '', /--force refreshed the copied verifiers only/)
+  })
+})
+
+describe('re-seeding with --reset-manifests', () => {
+  let target: string
+  let result: ReturnType<typeof spawnSync>
+
+  before(() => {
+    target = usedInstallation()
+    result = spawnSync(process.execPath, [BOOTSTRAP, '--target', target, '--reset-manifests'], { encoding: 'utf8' })
+  })
+
+  test('rebuilds the manifests from the repository it finds now', () => {
+    const seeded = (name: string): Record<string, unknown> =>
+      JSON.parse(readFileSync(join(target, 'scripts/harness', name), 'utf8')) as Record<string, unknown>
+    assert.equal(result.status, 0, String(result.stderr))
+    assert.deepEqual(seeded('doc-index.manifest.json'), {})
+    assert.deepEqual(seeded('doc-claims.manifest.json'), {})
+    assert.deepEqual(seeded('test-hygiene.manifest.json'), {})
+    const comments = seeded('comment-hygiene.manifest.json')
+    assert.deepEqual(comments.scan, ['scripts'])
+    assert.equal((comments.labels as unknown[]).length, 4)
+    const budgets = seeded('doc-budgets.manifest.json')
+    assert.equal(budgets.__mine__, undefined)
+    assert.equal(typeof budgets['AGENTS.md'], 'number')
+  })
+
+  test('is all it does: the adopter’s own edits survive', () => {
+    // Re-seeding the copy is a separate decision, so this flag must not make it.
+    assert.equal(readFileSync(join(target, 'scripts/harness/verify-md-wrap.ts'), 'utf8'), '// locally customised\n')
+    assert.equal(readFileSync(join(target, 'AGENTS.md'), 'utf8'), '# Mine\n')
+  })
+})
+
+describe('--dry-run', () => {
+  test('writes nothing, and promises exactly what a real run creates', () => {
+    const dryTarget = tracked()
+    const realTarget = tracked()
+    const dry = spawnSync(process.execPath, [BOOTSTRAP, '--target', dryTarget, '--dry-run'], { encoding: 'utf8' })
+    assert.equal(dry.status, 0, String(dry.stderr))
+    // Not the tree, not the verifiers, not the version record.
+    assert.deepEqual(readdirSync(dryTarget), [])
+    assert.match(dry.stdout ?? '', /would create/)
+
+    const real = spawnSync(process.execPath, [BOOTSTRAP, '--target', realTarget], { encoding: 'utf8' })
+    assert.equal(real.status, 0, String(real.stderr))
+    const planOf = (stdout: string): string[] => (stdout.match(/^ {2}\+ (.+)$/gm) ?? []).map(line => line.slice(4))
+    assert.deepEqual(planOf(dry.stdout ?? ''), planOf(real.stdout ?? ''))
+    for (const path of planOf(dry.stdout ?? '')) {
+      assert.ok(existsSync(join(realTarget, path)), `${path} was promised but the real run did not create it`)
+    }
   })
 })
 

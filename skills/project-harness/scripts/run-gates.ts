@@ -10,6 +10,7 @@
  */
 
 import { spawn } from 'node:child_process'
+import { isEntryPoint } from './harness-root.ts'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -389,4 +390,4 @@ async function main(): Promise<void> {
   process.exit(runFailed(results) ? 1 : 0)
 }
 
-if (import.meta.main) void main()
+if (isEntryPoint(import.meta.url)) void main()

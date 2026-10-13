@@ -13,7 +13,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, relative, resolve, sep } from 'node:path'
 import { documentAnchors, isExternalTarget, linkTargets, proseLines } from './markdown.ts'
-import { resolveRepoRoot } from './harness-root.ts'
+import { isEntryPoint, resolveRepoRoot } from './harness-root.ts'
 import { runBaselineGate, reportBaseline } from './baseline.ts'
 
 /** A resolved link that points at nothing. */
@@ -227,4 +227,4 @@ function main(): void {
   process.exit(1)
 }
 
-if (import.meta.main) main()
+if (isEntryPoint(import.meta.url)) main()

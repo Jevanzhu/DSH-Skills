@@ -1,6 +1,6 @@
 # DSH-Skills
 
-从 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的工程治理实践中蒸馏出的两个 agent skill：纯 Node 直跑、零 npm 依赖、可整包复制进任何仓库。
+从 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的工程治理实践中蒸馏出的两个 agent skill：纯 Node 直跑、零 npm 依赖、可整包复制进任何仓库。运行要求（Node 版本下限）以 `package.json` 的 `engines` 为准——门禁是 TypeScript 源文件直跑，靠 Node 的类型剥离特性。
 
 | skill | 拥有什么 |
 |---|---|
@@ -33,6 +33,8 @@ node skills/project-harness/scripts/bootstrap.ts --target <repo>
 
 bootstrap 会铺 `.agents/notes/` 生命周期树、写 `harness.json`（主语言与配对开关）、复制门禁脚本到目标仓库的 `scripts/harness/`，并按 `--adopt` 与否决定既有违规是入账还是直接红。
 
+升级已装的仓库用同一命令加 `--force`：它只刷新 `scripts/harness/` 下的校验器副本，你在各 manifest 里的申报（文档索引、宣称清单、注释规则、预算、测试面）不受影响；要按当前实测的树重新生成那些 manifest，用独立且破坏性的 `--reset-manifests`。装完读目标仓库的 `scripts/harness/version.json` 就知道装的是哪一版。
+
 ## 跑测试
 
 ```sh
@@ -51,5 +53,7 @@ npm run check # run-gates 的 text 模式：文本面门禁，跑哪些以门禁
 实践与阈值蒸馏自 deepseek-harness（归档的 533/248 校准、2772 条封存记录、门禁的诚实边界等），但本仓是**免依赖重写**：无 mdast 等第三方依赖，门禁以行级解析近似上游的块级语义；有意简化处写在对应模块头注与 references 里（例：活跃配对记录按空行分块而非 AST 节点切块，见 `pair-record.ts`）。上游为 MIT 许可，版权归其作者所有。
 
 ## 状态
+
+当前版本 0.1.0（`skills/VERSION`，两个 skill 共用一号）：凡是改动 `scripts/`、`SKILL.md`、`references/` 或 `templates/` 下任何文件，都同批动它。
 
 公开仓库：[Jevanzhu/DSH-Skills](https://github.com/Jevanzhu/DSH-Skills)，MIT 许可（见 `LICENSE`）。

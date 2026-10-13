@@ -47,14 +47,20 @@ node ~/.agents/skills/project-harness/scripts/bootstrap.ts --target ~/myproj --a
 
 1. **建 Agent Note 生命周期树**：`proposed/`、`implemented/`、`rejected/` 三个 lifecycle × 六个 class，各放一个 `.gitkeep` 让 git 保留空目录。
 2. **建归档树**：六个 class 目录**全部建出**（即使为空——归档门禁要求六个都在），加空的 `manifest.json` 与 `AGENTS.md`。
-3. **复制校验器**到 `<target>/scripts/harness/`。
+3. **复制校验器**到 `<target>/scripts/harness/`，并把安装来源的版本写进 `scripts/harness/version.json`（安装方元数据：内容一变就刷新，不是你的申报项）。
 4. **实测词数生成文档预算**：读 `AGENTS.md`、`docs/AGENTS.md`、`README.md`、`docs/architecture.md` 里存在的那些，按当前词数 × 1.15 作为初始上限。留 15% 余量是因为初始上限不该立刻就对现有内容亮红灯。
 5. **复制起步模板**：`AGENTS.md`、`docs/AGENTS.md`、`lefthook.yml`——仅在目标不存在同名文件时。
 6. **`--adopt` 时录制债务台账**：跑一遍 link 与 wrap 门禁并 `--write-baseline`，把当前违规记为已接受债务。
 
 注意第 4 步和第 6 步是同一种设计：**都是从当前实测值起步，而不是从理想值起步**。文档预算不因为现有文档超长就报错，债务台账不因为现有死链就报错。棘轮的原则是「只能变好」，不是「立刻变好」。
 
-`--dry-run` 只打印计划。默认不覆盖任何已存在文件，`--force` 才覆盖（用于升级后刷新校验器副本）。加 `--adopt` 时 `--dry-run` 会说明将要录制什么而不实际执行。
+`--dry-run` 只打印计划，不写任何文件。默认不覆盖任何已存在文件。
+
+`--force` 用于升级后刷新校验器副本，**只覆盖校验器**。五份 manifest（文档预算、文档索引、注释卫生、测试面、宣称）装的是你自己的申报，不在它的覆盖面里。
+
+要重新生成 manifest，用 `--reset-manifests`：它把每一份按当前实测的树重播一遍，**你写在里面的申报会被覆盖**。破坏性动作有自己的名字，就不该是升级的顺带效果——`--force` 曾经连它们一起重置，一次例行升级能让索引与宣称清单变成空文件、注释规则退回起步形状，而采用方不会收到任何提示，门禁只是安静地少管一片地方。
+
+加 `--adopt` 时 `--dry-run` 会说明将要录制什么而不实际执行。
 
 ## 为什么校验器是复制而不是引用
 
@@ -98,6 +104,8 @@ node ~/.agents/skills/project-harness/scripts/bootstrap.ts --target ~/myproj --a
 
 ## 升级
 
-skill 更新后，用 `--force` 重跑可以刷新 `scripts/harness/` 下的校验器副本。**这会覆盖你对校验器的本地修改**——如果你改过它们（这很正常，门禁本来就该按仓库定制），先 diff 一下再决定。
+skill 更新后，用 `--force` 重跑可以刷新 `scripts/harness/` 下的校验器副本。**这会覆盖你对校验器的本地修改**——如果你改过它们（这很正常，门禁本来就该按仓库定制），先 diff 一下再决定。`--force` 到此为止：manifest 里的申报不受影响，重播它们要显式 `--reset-manifests`。
+
+升级后确认装的是哪一版：`scripts/harness/version.json` 记录复制这些校验器时 skill 的版本，`bootstrap` 的输出行里也会打印。版本号只住在 `skills/VERSION` 一处，两个 skill 一起发版、共用一号；凡是改动 `scripts/`、`SKILL.md`、`references/`、`templates/` 下任何文件，都同批动它——采用方据此回答「我这个仓库装的是哪一版」，而这一问只在出问题时才有人问。
 
 把「校验器副本已按本地需要修改」这件事记在 `scripts/harness/README.md` 里，否则下次升级会丢掉你的改动。
