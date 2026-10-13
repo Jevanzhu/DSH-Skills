@@ -4,7 +4,7 @@
 
 | skill | 拥有什么 |
 |---|---|
-| `agent-notes` | 决策记录的格式与生命周期：`{lifecycle}/{class}/yyyy-mm-dd-topic.md`、骨架强制、中英双语配对与一致性记录、冻结归档 |
+| `agent-notes` | 决策记录的格式与生命周期：`{lifecycle}/{class}/yyyy-mm-dd-topic.md`（目录与文件名主干随语料语言，英文 `implemented/feature/` ↔ 中文 `已实施/功能/`）、骨架强制、中英双语配对与一致性记录、冻结归档 |
 | `project-harness` | 规则住在哪里、怎么强制：AGENTS.md 分层、文档字数预算、Markdown 门禁、bootstrap 脚手架、统一 gate runner |
 
 两个 skill 互相配合：`project-harness` 决定「规则住在哪个文件」，`agent-notes` 决定「一条决策怎么被记录」；`bootstrap.ts` 会把 `agent-notes` 的门禁脚本一并复制进目标仓库——门禁必须能在没装 skill 的克隆与 CI 里独立运行。
@@ -54,6 +54,6 @@ npm run check # run-gates 的 text 模式：文本面门禁，跑哪些以门禁
 
 ## 状态
 
-当前版本 0.1.3（`skills/VERSION`，两个 skill 共用一号）：凡是改动 `scripts/`、`SKILL.md`、`references/` 或 `templates/` 下任何文件，都同批动它。
+当前版本 0.1.4（`skills/VERSION`，两个 skill 共用一号）：凡是改动 `scripts/`、`SKILL.md`、`references/` 或 `templates/` 下任何文件，都同批动它。
 
 公开仓库：[Jevanzhu/DSH-Skills](https://github.com/Jevanzhu/DSH-Skills)，MIT 许可（见 `LICENSE`）。
