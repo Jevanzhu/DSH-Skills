@@ -17,7 +17,7 @@ skills/                      # 技能本体；源码布局，安装时复制到�
   project-harness/           #   SKILL.md + references/ + scripts/ + templates/
 docs/                        # 本仓自己的文档链：索引 / 活账 / 槽位目录（规则见 doc-lifecycle）
 scripts/structure.spec.ts    # 仓库自身的不变量守卫（共享文件逐字节一致等）
-scripts/harness/             # 文档链的声明（doc-index.manifest.json）
+scripts/harness/             # 文档链与注释面的声明（doc-index / comment-hygiene manifest）
 ```
 
 `.agents/` 是**安装位置**而不是源码位置：它给消费方仓库用，被客户端当作技能目录扫描。正本仓不占这个路径，避免本仓的技能被当成已安装技能加载，也避免源码布局与安装布局混为一谈。脚本一律按「相对于自身 skill 目录」解析，因此两份布局都跑得通。
@@ -36,8 +36,8 @@ bootstrap 会铺 `.agents/notes/` 生命周期树、写 `harness.json`（主语�
 ## 跑测试
 
 ```sh
-npm test             # node --test：agent-notes 门禁负向对照 + 仓库结构守卫 + 门禁脚本各套
-npm run check:docs   # 文档门：相对链接 / 一段一行 / 文档链索引（索引与槽位目录、篇数一致）
+npm test      # node --test：agent-notes 门禁负向对照 + 仓库结构守卫 + 门禁脚本各套
+npm run check # 文本门：相对链接 / 一段一行 / 文档链索引 / 注释卫生
 ```
 
 新增或修改门禁规则时必须带**负向对照**用例：正向绿、反向红，缺一不可。

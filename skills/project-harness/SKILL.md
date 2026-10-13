@@ -2,14 +2,14 @@
 name: project-harness
 description: >-
   Set up and maintain a repository's engineering conventions and quality gates —
-  项目管理 / 工程规范 / 代码评审 / 门禁 / 质量体系 / AGENTS.md / CLAUDE.md /
+  项目管理 / 工程规范 / 代码评审 / 注释卫生 / 门禁 / 质量体系 / AGENTS.md / CLAUDE.md /
   CONTRIBUTING.md / 提交规范 / 测试可靠性. Use when establishing a new repository's
   conventions, deciding which checks run before a push versus in CI, adding a gate
-  script, enforcing documentation standards or word budgets, reviewing a pull
-  request, choosing between merge-forward and rebase, working with stacked or
-  dependent PRs, or discussing error-handling and test-flakiness policy. Also use
-  when an agent keeps ignoring project rules, or when local checks and CI disagree
-  about what "passing" means.
+  script, enforcing documentation standards, word budgets, or comment hygiene,
+  reviewing a pull request, choosing between merge-forward and rebase, working with
+  stacked or dependent PRs, or discussing error-handling and test-flakiness policy.
+  Also use when an agent keeps ignoring project rules, or when local checks and CI
+  disagree about what "passing" means.
 ---
 
 # Project Harness
@@ -79,6 +79,10 @@ node ~/.agents/skills/project-harness/scripts/bootstrap.ts --target <repo> --ado
 
 常驻文档管「事实住哪」；链管「一件事从提出到了结走哪些档」：索引（导航）、活账（未了结事项的唯一清单）、槽位目录（评审／设计／执行／调研／规范）、归档（明说的冻结）。判据包括：活账一行一条、只记「一句结论 + 指针」；评审必须给出通过／有条件通过／退回之一；归档前核验内容与历史一致、未了结的事先立开放项、归档 commit 号留痕。`verify-doc-index.ts` 强制索引与槽位一一对应——契约是仓库数据（`scripts/harness/doc-index.manifest.json`，`{}` 即不带链）。见 [references/doc-lifecycle.md](references/doc-lifecycle.md) 与模板 [templates/ledger.md](templates/ledger.md)、[templates/docs-index.md](templates/docs-index.md)。
 
+### 注释卫生
+
+注释只写代码作用与需要说明的东西（约束／不变量／语义／平台差／同步关系），**修复史归 git**。机器判据分两族，缺一不可：写进注释的编年史（日期、轮次、批次括注）与**清理后的残形**（括注被切空、只剩破折号）——只做前者时，清理器留下的半痕会被判成干净。**字面量是红线**：扫描器只读注释面，字符串、模板串、正则里的标签样文本永不报告，清理工具不得触碰生产字面量。例外与「被测试钉住的注释」都进 manifest 显式登记——各带理由与钉住它的测试，陈旧时门会催删。扫描面不可信（根缺失、零文件、不可读）时 fail-closed 报红且不入台账。见 [references/comment-hygiene.md](references/comment-hygiene.md)。
+
 ### 散文标准
 
 编辑文档、注释、JSDoc、提示词、面向用户的字符串时的标准。核心是**保留完整命题**：删字之前先逐条识别 actor/action、条件与时序、情态（must/may/never）、负面保证与例外、所有权与副作用、失败模式。`A smaller word count alone is not an improvement.` 见 [references/prose-standard.md](references/prose-standard.md) 与 [references/prose-examples.md](references/prose-examples.md)。
@@ -109,7 +113,7 @@ PR 历史怎么组织、堆叠 PR 怎么落地、什么时候 merge-forward 什�
 
 ## 责任边界
 
-本 skill 拥有**文档层级与文档链、门禁、评审、错误处理、测试可靠性、历史与发布纪律**。
+本 skill 拥有**文档层级与文档链、注释卫生、门禁、评审、错误处理、测试可靠性、历史与发布纪律**。
 
 决策记录的格式、生命周期与归档属于 `agent-notes` skill。两者都涉及 `.agents/` 下的内容：写决策记录时用 `agent-notes`，制定「规则住在哪个文件」时用本 skill。
 

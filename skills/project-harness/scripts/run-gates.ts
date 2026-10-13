@@ -289,12 +289,13 @@ const noteGates: Gate[] = [
   },
 ]
 
-/** Documentation rules: dead links, one-line paragraphs, word budgets, chain index. */
+/** Documentation and prose rules: dead links, one-line paragraphs, budgets, chain index, comments. */
 const docGates: Gate[] = [
   { id: 'markdown-links', label: 'Markdown links and anchors', command: 'node', args: [`${HARNESS}/verify-md-links.ts`], quick: true },
   { id: 'markdown-wrap', label: 'One paragraph per line', command: 'node', args: [`${HARNESS}/verify-md-wrap.ts`], quick: true },
   { id: 'doc-budgets', label: 'Documentation word budgets', command: 'node', args: [`${HARNESS}/verify-doc-budgets.ts`], quick: true },
   { id: 'doc-index', label: 'Document chain index', command: 'node', args: [`${HARNESS}/verify-doc-index.ts`], quick: true },
+  { id: 'comment-hygiene', label: 'Comment hygiene', command: 'node', args: [`${HARNESS}/verify-comment-hygiene.ts`], quick: true },
 ]
 
 /**

@@ -27,6 +27,7 @@ const HARNESS_DIR = 'scripts/harness'
 const BASELINE_GATES: ReadonlyArray<readonly [gate: string, file: string]> = [
   ['markdown-links', 'verify-md-links.ts'],
   ['markdown-wrap', 'verify-md-wrap.ts'],
+  ['comment-hygiene', 'verify-comment-hygiene.ts'],
 ]
 
 /**
@@ -54,12 +55,39 @@ const VERIFIER_FILES: ReadonlyArray<readonly [file: string, sourceDir: string, p
   ['verify-agent-note-classification.ts', AGENT_NOTES_SKILL, true],
   ['verify-archived-agent-notes.ts', AGENT_NOTES_SKILL, true],
   // The repository-wide gates.
+  ['verify-comment-hygiene.ts', SCRIPT_DIR],
   ['verify-doc-budgets.ts', SCRIPT_DIR],
   ['verify-doc-index.ts', SCRIPT_DIR],
   ['verify-md-links.ts', SCRIPT_DIR],
   ['verify-md-wrap.ts', SCRIPT_DIR],
   ['run-gates.ts', SCRIPT_DIR],
 ]
+
+/**
+ * Directories the comment-hygiene seed scans, measured from the target's own tree.
+ * `scripts/` is first because the verifiers were just copied into it and a toolchain is
+ * narrative surface too; a source tree joins the list only when it exists, so the seed
+ * never declares a scan root the fail-closed gate would report as missing.
+ */
+const COMMENT_SCAN_CANDIDATES = ['scripts', 'src', 'app', 'lib']
+
+/**
+ * Starter comment rules: shapes that are chronology in any repository, so the gate has
+ * a real first day instead of an empty shell. Shapes are extended by the adopter;
+ * exceptions are how a real technical term colliding with one of them is admitted.
+ */
+const COMMENT_HYGIENE_STARTER = {
+  labels: [
+    { name: '日期戳', pattern: '\\d{4}-\\d{2}-\\d{2}' },
+    { name: '年月戳', pattern: '\\d{4}\\s*年\\s*\\d{1,2}\\s*月' },
+    { name: '轮次', pattern: '第\\s*(?:\\d{1,3}|[一二三四五六七八九十百]{1,3})\\s*轮' },
+    { name: '批次括注', pattern: '[（(]\\s*批\\s*\\d{1,3}' },
+  ],
+  residue: [
+    { name: '括注被切空', pattern: '（\\s*）' },
+    { name: '括注只剩破折号', pattern: '（\\s*[-—–]+\\s*）' },
+  ],
+}
 
 /** Standing docs the budget manifest measures on first run. */
 const BUDGET_CANDIDATES = ['AGENTS.md', 'docs/AGENTS.md', 'README.md', 'docs/architecture.md']
@@ -267,7 +295,19 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
     notes.push('doc-index.manifest.json declares no chain yet; start from templates/ledger.md and templates/docs-index.md when this repository keeps an indexed document chain')
   }
 
-  // 6. Copy the starter templates only when the target has no equivalent yet.
+  // 6. Seed the comment rules against the target's own tree. Which candidate roots
+  // exist is measured rather than guessed: the gate fails closed on a declared root
+  // that is missing, so the seed never writes one.
+  const commentPath = join(options.target, HARNESS_DIR, 'comment-hygiene.manifest.json')
+  if (existsSync(commentPath) && !options.force) {
+    skipped.push(relative(options.target, commentPath))
+  } else {
+    const scan = COMMENT_SCAN_CANDIDATES.filter(candidate => existsSync(join(options.target, candidate)))
+    write(join(HARNESS_DIR, 'comment-hygiene.manifest.json'), `${JSON.stringify({ scan, ...COMMENT_HYGIENE_STARTER }, null, 2)}\n`)
+    notes.push(`comment-hygiene scans ${scan.join(', ')} for the starter shapes; add a root to the manifest when code lands elsewhere, and register a real term that collides with a shape as an exception`)
+  }
+
+  // 7. Copy the starter templates only when the target has no equivalent yet.
   for (const [template, destination] of [
     ['AGENTS.md', 'AGENTS.md'],
     ['lefthook.yml', 'lefthook.yml'],
@@ -287,7 +327,7 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
     }
   }
 
-  // 7. Adoption: record the debt that predates the harness. Without this an existing
+  // 8. Adoption: record the debt that predates the harness. Without this an existing
   // repository goes red on its own history, and a gate that is red on day one gets
   // switched off on day two. The ledger is the difference between "this repository is
   // dirty" and "this change made it dirtier".
@@ -309,7 +349,9 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
       })
       const line = (run.stdout ?? '').split('\n').find(text => text.includes('recorded'))
       if (line !== undefined) adopted.push(line.trim())
-      else notes.push(`--adopt: ${gate} did not record (exit ${String(run.status)}): ${(run.stderr ?? '').trim().split('\n')[0] ?? ''}`)
+      // Exit 0 with nothing recorded means the gate found no debt to record — an empty
+      // or disabled manifest, not a failure worth a note. A non-zero exit is.
+      else if (run.status !== 0) notes.push(`--adopt: ${gate} did not record (exit ${String(run.status)}): ${(run.stderr ?? '').trim().split('\n')[0] ?? ''}`)
     }
   } else if (existsSync(join(options.target, 'README.md'))) {
     notes.push(`this target already has documents; re-run with --adopt to record its existing violations as debt instead of failing on them`)

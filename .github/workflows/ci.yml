@@ -14,5 +14,5 @@ jobs:
           node-version: '24'
       - name: 测试（node --test，零依赖直跑）
         run: npm test
-      - name: 文档门（链接 / 一段一行）
-        run: npm run check:docs
+      - name: 文本门（链接 / 一段一行 / 文档链索引 / 注释卫生）
+        run: npm run check

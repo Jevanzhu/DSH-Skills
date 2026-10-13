@@ -64,6 +64,7 @@ describe('bootstrapping a fresh repository', () => {
       'verify-agent-note-format.ts',
       'verify-agent-note-classification.ts',
       'verify-archived-agent-notes.ts',
+      'verify-comment-hygiene.ts',
       'verify-doc-budgets.ts',
       'verify-doc-index.ts',
       'verify-md-links.ts',
@@ -83,7 +84,7 @@ describe('bootstrapping a fresh repository', () => {
     // A missing import surfaces as MODULE_NOT_FOUND; the gates must get far enough
     // to report their own verdicts instead.
     assert.doesNotMatch(out, /MODULE_NOT_FOUND|Cannot find module/)
-    assert.match(out, /7 passed, 0 failed, 0 skipped/, out)
+    assert.match(out, /8 passed, 0 failed, 0 skipped/, out)
   })
 
   test('creates the Agent Note lifecycle and archive trees the gates require', () => {
@@ -121,6 +122,17 @@ describe('bootstrapping a fresh repository', () => {
     assert.match(result.stdout ?? '', /doc-index\.manifest\.json declares no chain yet/)
   })
 
+  test('seeds comment rules against the measured tree, never against a guessed root', () => {
+    // The verifiers were just copied into scripts/, so that root is measured as
+    // present and scanned deliberately; a source tree would join the list, and a
+    // root the target does not have is never declared (the gate fails closed on one).
+    const manifest = JSON.parse(readFileSync(join(target, 'scripts/harness/comment-hygiene.manifest.json'), 'utf8'))
+    assert.deepEqual(manifest.scan, ['scripts'])
+    assert.equal(manifest.labels.length, 4)
+    assert.equal(manifest.residue.length, 2)
+    assert.match(result.stdout ?? '', /comment-hygiene scans scripts for the starter shapes/)
+  })
+
   test('is idempotent: a second run preserves the files the first run wrote', () => {
     const agents = readFileSync(join(target, 'AGENTS.md'), 'utf8')
     writeFileSync(join(target, 'AGENTS.md'), `${agents}\n<!-- local edit -->\n`)
@@ -153,7 +165,7 @@ describe('adopting a repository that already has violations', () => {
       cwd: target,
       encoding: 'utf8',
     })
-    assert.match(`${run.stdout ?? ''}${run.stderr ?? ''}`, /7 passed, 0 failed, 0 skipped/)
+    assert.match(`${run.stdout ?? ''}${run.stderr ?? ''}`, /8 passed, 0 failed, 0 skipped/)
   })
 
   test('but a newly broken link still fails', () => {
@@ -164,6 +176,34 @@ describe('adopting a repository that already has violations', () => {
     })
     assert.equal(run.status, 1)
     assert.match(`${run.stdout ?? ''}${run.stderr ?? ''}`, /docs\/new\.md:3/)
+  })
+})
+
+describe('adopting a repository whose comments already carry history', () => {
+  let target: string
+  let result: ReturnType<typeof spawnSync>
+
+  before(() => {
+    target = tracked()
+    mkdirSync(join(target, 'src'), { recursive: true })
+    writeFileSync(join(target, 'src/app.ts'), 'export const a = 1 // 2026-10-13: switched the writer\n')
+    result = spawnSync(process.execPath, [BOOTSTRAP, '--target', target, '--adopt'], { encoding: 'utf8' })
+  })
+
+  test('records the existing comment hits as debt, without failing the gate', () => {
+    assert.equal(result.status, 0, String(result.stderr))
+    assert.match(result.stdout ?? '', /adopted: comment-hygiene: recorded 1 existing violation/)
+    assert.match(result.stdout ?? '', /comment-hygiene scans scripts, src for the starter shapes/)
+  })
+
+  test('passes on history alone, and still fails on a comment added later', () => {
+    const before = spawnSync(process.execPath, [join(target, 'scripts/harness/run-gates.ts'), 'doc-quick'], { cwd: target, encoding: 'utf8' })
+    assert.match(`${before.stdout ?? ''}${before.stderr ?? ''}`, /8 passed, 0 failed, 0 skipped/)
+
+    writeFileSync(join(target, 'src/app.ts'), 'export const a = 1 // 2026-10-13: switched the writer\nexport const b = 2 // 第 2 轮: retry budget\n')
+    const after = spawnSync(process.execPath, [join(target, 'scripts/harness/run-gates.ts'), 'doc-quick'], { cwd: target, encoding: 'utf8' })
+    assert.equal(after.status, 1)
+    assert.match(`${after.stdout ?? ''}${after.stderr ?? ''}`, /轮次 matches "第 2 轮"/)
   })
 })
 

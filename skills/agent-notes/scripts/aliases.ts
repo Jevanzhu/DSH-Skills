@@ -70,8 +70,8 @@ export function otherLocale(locale: Locale): Locale {
 
 /**
  * Split a note filename into its extension-free stem and optional tier.
- * `2026-01-01-topic.zh.md` and `2026-01-01-topic.en.md` are tiered (the tier is
- * the file's own language); `2026-01-01-topic.md` is the primary file.
+ * `yyyy-mm-dd-topic.zh.md` and `yyyy-mm-dd-topic.en.md` are tiered (the tier is
+ * the file's own language); `yyyy-mm-dd-topic.md` is the primary file.
  */
 export function splitTier(name: string): { stem: string; tier: Locale | undefined } {
   for (const tier of LOCALES) {
