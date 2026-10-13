@@ -1,0 +1,7 @@
+{
+  "index": "docs/README.md",
+  "scan": "docs",
+  "entries": [
+    { "dir": "03-设计", "count": true }
+  ]
+}
