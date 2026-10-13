@@ -75,6 +75,10 @@ node ~/.agents/skills/project-harness/scripts/bootstrap.ts --target <repo> --ado
 
 每个层级有明确的职责边界和「不属于这里」的清单。字数预算用 `wc -w` 计数、只在超限和文件缺失时失败，超限的处理顺序是**迁移 → 精简 → 提高上限**，且提高上限必须在同一个改动里给出理由。`A too-low ceiling is a budget bug.` 见 [references/doc-governance.md](references/doc-governance.md)。
 
+### 文档链
+
+常驻文档管「事实住哪」；链管「一件事从提出到了结走哪些档」：索引（导航）、活账（未了结事项的唯一清单）、槽位目录（评审／设计／执行／调研／规范）、归档（明说的冻结）。判据包括：活账一行一条、只记「一句结论 + 指针」；评审必须给出通过／有条件通过／退回之一；归档前核验内容与历史一致、未了结的事先立开放项、归档 commit 号留痕。`verify-doc-index.ts` 强制索引与槽位一一对应——契约是仓库数据（`scripts/harness/doc-index.manifest.json`，`{}` 即不带链）。见 [references/doc-lifecycle.md](references/doc-lifecycle.md) 与模板 [templates/ledger.md](templates/ledger.md)、[templates/docs-index.md](templates/docs-index.md)。
+
 ### 散文标准
 
 编辑文档、注释、JSDoc、提示词、面向用户的字符串时的标准。核心是**保留完整命题**：删字之前先逐条识别 actor/action、条件与时序、情态（must/may/never）、负面保证与例外、所有权与副作用、失败模式。`A smaller word count alone is not an improvement.` 见 [references/prose-standard.md](references/prose-standard.md) 与 [references/prose-examples.md](references/prose-examples.md)。
@@ -101,11 +105,11 @@ PR 历史怎么组织、堆叠 PR 怎么落地、什么时候 merge-forward 什�
 
 ## 模板
 
-[ templates/](templates/) 下有起步用的骨架：`AGENTS.md`（standing orders 层）、`docs-AGENTS.md`（文档层级与预算表）、`lefthook.yml`（薄提交钩子）。
+[ templates/](templates/) 下有起步用的骨架：`AGENTS.md`（standing orders 层）、`docs-AGENTS.md`（文档层级与预算表）、`ledger.md`（活账）、`docs-index.md`（索引）、`lefthook.yml`（薄提交钩子）。
 
 ## 责任边界
 
-本 skill 拥有**文档层级、门禁、评审、错误处理、测试可靠性、历史与发布纪律**。
+本 skill 拥有**文档层级与文档链、门禁、评审、错误处理、测试可靠性、历史与发布纪律**。
 
 决策记录的格式、生命周期与归档属于 `agent-notes` skill。两者都涉及 `.agents/` 下的内容：写决策记录时用 `agent-notes`，制定「规则住在哪个文件」时用本 skill。
 

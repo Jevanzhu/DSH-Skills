@@ -55,6 +55,7 @@ const VERIFIER_FILES: ReadonlyArray<readonly [file: string, sourceDir: string, p
   ['verify-archived-agent-notes.ts', AGENT_NOTES_SKILL, true],
   // The repository-wide gates.
   ['verify-doc-budgets.ts', SCRIPT_DIR],
+  ['verify-doc-index.ts', SCRIPT_DIR],
   ['verify-md-links.ts', SCRIPT_DIR],
   ['verify-md-wrap.ts', SCRIPT_DIR],
   ['run-gates.ts', SCRIPT_DIR],
@@ -255,7 +256,18 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
     write(join(HARNESS_DIR, 'doc-budgets.manifest.json'), `${JSON.stringify(budgets, null, 2)}\n`)
   }
 
-  // 5. Copy the starter templates only when the target has no equivalent yet.
+  // 5. Seed the document-chain manifest empty. `{}` declares no chain, so the index
+  // gate passes until this repository writes an index and declares its slots; the
+  // gate's "no manifest" error then stays reserved for a repository that deleted it.
+  const docIndexPath = join(options.target, HARNESS_DIR, 'doc-index.manifest.json')
+  if (existsSync(docIndexPath) && !options.force) {
+    skipped.push(relative(options.target, docIndexPath))
+  } else {
+    write(join(HARNESS_DIR, 'doc-index.manifest.json'), '{}\n')
+    notes.push('doc-index.manifest.json declares no chain yet; start from templates/ledger.md and templates/docs-index.md when this repository keeps an indexed document chain')
+  }
+
+  // 6. Copy the starter templates only when the target has no equivalent yet.
   for (const [template, destination] of [
     ['AGENTS.md', 'AGENTS.md'],
     ['lefthook.yml', 'lefthook.yml'],
@@ -275,7 +287,7 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
     }
   }
 
-  // 6. Adoption: record the debt that predates the harness. Without this an existing
+  // 7. Adoption: record the debt that predates the harness. Without this an existing
   // repository goes red on its own history, and a gate that is red on day one gets
   // switched off on day two. The ledger is the difference between "this repository is
   // dirty" and "this change made it dirtier".
@@ -320,7 +332,11 @@ Next steps that need your judgment (the harness cannot infer these):
   3. Add a package.json script per gate so editors and CI share one entry point.
   4. Install the git hooks (lefthook.yml) and wire the same gates into CI.
   5. To require the archive gate, seal the tree with:
-       node ${HARNESS_DIR}/verify-archived-agent-notes.ts --write${options.adopt ? `
+       node ${HARNESS_DIR}/verify-archived-agent-notes.ts --write
+  6. If this repository keeps an indexed document chain (an index document, slot
+     directories, a ledger of open items), start it from templates/ledger.md and
+     templates/docs-index.md, then declare the slots in
+     ${HARNESS_DIR}/doc-index.manifest.json.${options.adopt ? `
 
 The ledger shows what was adopted. Pay it down deliberately: fix a batch, then
 re-record with \`--write-baseline\` so the file visibly shrinks. Each entry left in

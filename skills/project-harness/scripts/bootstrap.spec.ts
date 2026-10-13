@@ -65,6 +65,7 @@ describe('bootstrapping a fresh repository', () => {
       'verify-agent-note-classification.ts',
       'verify-archived-agent-notes.ts',
       'verify-doc-budgets.ts',
+      'verify-doc-index.ts',
       'verify-md-links.ts',
       'verify-md-wrap.ts',
       'run-gates.ts',
@@ -82,7 +83,7 @@ describe('bootstrapping a fresh repository', () => {
     // A missing import surfaces as MODULE_NOT_FOUND; the gates must get far enough
     // to report their own verdicts instead.
     assert.doesNotMatch(out, /MODULE_NOT_FOUND|Cannot find module/)
-    assert.match(out, /6 passed, 0 failed, 0 skipped/, out)
+    assert.match(out, /7 passed, 0 failed, 0 skipped/, out)
   })
 
   test('creates the Agent Note lifecycle and archive trees the gates require', () => {
@@ -113,6 +114,11 @@ describe('bootstrapping a fresh repository', () => {
 
   test('writes no ledger, because it had no violations to record', () => {
     assert.equal(existsSync(join(target, 'scripts/harness/baseline.json')), false)
+  })
+
+  test('seeds an empty document-chain manifest, so the index gate has an answer on day one', () => {
+    assert.deepEqual(JSON.parse(readFileSync(join(target, 'scripts/harness/doc-index.manifest.json'), 'utf8')), {})
+    assert.match(result.stdout ?? '', /doc-index\.manifest\.json declares no chain yet/)
   })
 
   test('is idempotent: a second run preserves the files the first run wrote', () => {
@@ -147,7 +153,7 @@ describe('adopting a repository that already has violations', () => {
       cwd: target,
       encoding: 'utf8',
     })
-    assert.match(`${run.stdout ?? ''}${run.stderr ?? ''}`, /6 passed, 0 failed, 0 skipped/)
+    assert.match(`${run.stdout ?? ''}${run.stderr ?? ''}`, /7 passed, 0 failed, 0 skipped/)
   })
 
   test('but a newly broken link still fails', () => {
