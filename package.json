@@ -1,5 +1,5 @@
 {
-  "name": "harness-skills",
+  "name": "dsh-skills",
   "private": true,
   "type": "module",
   "description": "从 deepseek-harness 提炼的工程治理技能包：agent-notes 与 project-harness（纯 Node，零依赖）",

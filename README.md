@@ -1,4 +1,4 @@
-# harness-skills
+# DSH-Skills
 
 从 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的工程治理实践中蒸馏出的两个 agent skill：纯 Node 直跑、零 npm 依赖、可整包复制进任何仓库。
 
