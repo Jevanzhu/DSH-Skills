@@ -79,6 +79,10 @@ node ~/.agents/skills/project-harness/scripts/bootstrap.ts --target <repo> --ado
 
 常驻文档管「事实住哪」；链管「一件事从提出到了结走哪些档」：索引（导航）、活账（未了结事项的唯一清单）、槽位目录（评审／设计／执行／调研／规范）、归档（明说的冻结）。判据包括：活账一行一条、只记「一句结论 + 指针」；评审必须给出通过／有条件通过／退回之一；归档前核验内容与历史一致、未了结的事先立开放项、归档 commit 号留痕。`verify-doc-index.ts` 强制索引与槽位一一对应——契约是仓库数据（`scripts/harness/doc-index.manifest.json`，`{}` 即不带链）。见 [references/doc-lifecycle.md](references/doc-lifecycle.md) 与模板 [templates/ledger.md](templates/ledger.md)、[templates/docs-index.md](templates/docs-index.md)。
 
+### 宣称值对账
+
+文档里写下的数字与清单是**副本**，不会自己更新。`verify-doc-claims.ts` 把每条宣称（数字或清单 + 源头命令）与命令的实测输出对账：`expect: atLeast` 是把「门禁表只增不减」这类下限变成机器可判的形态，`list` 类管「新增了目录而文档没提」。同一事实只在一个地方写数值，别处指过来。这个门禁**有意不挂台账**——改一个错数比记一笔错账便宜。契约是仓库数据（`scripts/harness/doc-claims.manifest.json`，`{}` 即无宣称），见 [references/gates.md](references/gates.md)。
+
 ### 注释卫生
 
 注释只写代码作用与需要说明的东西（约束／不变量／语义／平台差／同步关系），**修复史归 git**。机器判据分两族，缺一不可：写进注释的编年史（日期、轮次、批次括注）与**清理后的残形**（括注被切空、只剩破折号）——只做前者时，清理器留下的半痕会被判成干净。**字面量是红线**：扫描器只读注释面，字符串、模板串、正则里的标签样文本永不报告，清理工具不得触碰生产字面量。例外与「被测试钉住的注释」都进 manifest 显式登记——各带理由与钉住它的测试，陈旧时门会催删。扫描面不可信（根缺失、零文件、不可读）时 fail-closed 报红且不入台账。见 [references/comment-hygiene.md](references/comment-hygiene.md)。

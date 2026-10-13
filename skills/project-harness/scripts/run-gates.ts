@@ -301,6 +301,7 @@ const textGates: Gate[] = [
   { id: 'doc-index', label: 'Document chain index', command: 'node', args: [`${HARNESS}/verify-doc-index.ts`], quick: true },
   { id: 'comment-hygiene', label: 'Comment hygiene', command: 'node', args: [`${HARNESS}/verify-comment-hygiene.ts`], quick: true },
   { id: 'test-hygiene', label: 'Focused and skipped tests', command: 'node', args: [`${HARNESS}/verify-test-hygiene.ts`], quick: true },
+  { id: 'doc-claims', label: 'Documented claims versus their sources', command: 'node', args: [`${HARNESS}/verify-doc-claims.ts`], quick: true },
 ]
 
 /**

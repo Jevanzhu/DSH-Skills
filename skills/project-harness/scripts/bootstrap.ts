@@ -59,6 +59,7 @@ const VERIFIER_FILES: ReadonlyArray<readonly [file: string, sourceDir: string, p
   // The repository-wide gates.
   ['verify-comment-hygiene.ts', SCRIPT_DIR],
   ['verify-doc-budgets.ts', SCRIPT_DIR],
+  ['verify-doc-claims.ts', SCRIPT_DIR],
   ['verify-doc-index.ts', SCRIPT_DIR],
   ['verify-md-links.ts', SCRIPT_DIR],
   ['verify-md-wrap.ts', SCRIPT_DIR],
@@ -334,7 +335,18 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
     }
   }
 
-  // 8. Copy the starter templates only when the target has no equivalent yet.
+  // 8. Seed the claim manifest empty. No claim can be inferred from a tree: which
+  // numbers a document states, and which command decides them, is the adopter's
+  // judgement. `{}` declares none, so the gate stays quiet until that judgement lands.
+  const claimsPath = join(options.target, HARNESS_DIR, 'doc-claims.manifest.json')
+  if (existsSync(claimsPath) && !options.force) {
+    skipped.push(relative(options.target, claimsPath))
+  } else {
+    write(join(HARNESS_DIR, 'doc-claims.manifest.json'), '{}\n')
+    notes.push('doc-claims.manifest.json declares no claims yet; when a document states a number or a list a command can measure (how many gates, which directories), declare the claim so a stale copy fails the gate')
+  }
+
+  // 9. Copy the starter templates only when the target has no equivalent yet.
   for (const [template, destination] of [
     ['AGENTS.md', 'AGENTS.md'],
     ['lefthook.yml', 'lefthook.yml'],
@@ -354,7 +366,7 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
     }
   }
 
-  // 9. Adoption: record the debt that predates the harness. Without this an existing
+  // 10. Adoption: record the debt that predates the harness. Without this an existing
   // repository goes red on its own history, and a gate that is red on day one gets
   // switched off on day two. The ledger is the difference between "this repository is
   // dirty" and "this change made it dirtier".
@@ -405,7 +417,10 @@ Next steps that need your judgment (the harness cannot infer these):
   6. If this repository keeps an indexed document chain (an index document, slot
      directories, a ledger of open items), start it from templates/ledger.md and
      templates/docs-index.md, then declare the slots in
-     ${HARNESS_DIR}/doc-index.manifest.json.${options.adopt ? `
+     ${HARNESS_DIR}/doc-index.manifest.json.
+  7. When a document states a number or a list a command can measure (how many gates
+     run, which directories exist), declare it in ${HARNESS_DIR}/doc-claims.manifest.json
+     — a stated number is a copy, and this is what keeps it from drifting.${options.adopt ? `
 
 The ledger shows what was adopted. Pay it down deliberately: fix a batch, then
 re-record with \`--write-baseline\` so the file visibly shrinks. Each entry left in

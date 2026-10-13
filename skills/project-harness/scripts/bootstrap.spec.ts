@@ -67,6 +67,7 @@ describe('bootstrapping a fresh repository', () => {
       'verify-archived-agent-notes.ts',
       'verify-comment-hygiene.ts',
       'verify-doc-budgets.ts',
+      'verify-doc-claims.ts',
       'verify-doc-index.ts',
       'verify-md-links.ts',
       'verify-md-wrap.ts',
@@ -86,7 +87,7 @@ describe('bootstrapping a fresh repository', () => {
     // A missing import surfaces as MODULE_NOT_FOUND; the gates must get far enough
     // to report their own verdicts instead.
     assert.doesNotMatch(out, /MODULE_NOT_FOUND|Cannot find module/)
-    assert.match(out, /9 passed, 0 failed, 0 skipped/, out)
+    assert.match(out, /10 passed, 0 failed, 0 skipped/, out)
   })
 
   test('creates the Agent Note lifecycle and archive trees the gates require', () => {
@@ -122,6 +123,11 @@ describe('bootstrapping a fresh repository', () => {
   test('seeds an empty document-chain manifest, so the index gate has an answer on day one', () => {
     assert.deepEqual(JSON.parse(readFileSync(join(target, 'scripts/harness/doc-index.manifest.json'), 'utf8')), {})
     assert.match(result.stdout ?? '', /doc-index\.manifest\.json declares no chain yet/)
+  })
+
+  test('seeds an empty claim manifest, since which numbers a document states is a judgement', () => {
+    assert.deepEqual(JSON.parse(readFileSync(join(target, 'scripts/harness/doc-claims.manifest.json'), 'utf8')), {})
+    assert.match(result.stdout ?? '', /doc-claims\.manifest\.json declares no claims yet/)
   })
 
   test('seeds comment rules against the measured tree, never against a guessed root', () => {
@@ -174,7 +180,7 @@ describe('adopting a repository that already has violations', () => {
       cwd: target,
       encoding: 'utf8',
     })
-    assert.match(`${run.stdout ?? ''}${run.stderr ?? ''}`, /9 passed, 0 failed, 0 skipped/)
+    assert.match(`${run.stdout ?? ''}${run.stderr ?? ''}`, /10 passed, 0 failed, 0 skipped/)
   })
 
   test('but a newly broken link still fails', () => {
@@ -207,7 +213,7 @@ describe('adopting a repository whose comments already carry history', () => {
 
   test('passes on history alone, and still fails on a comment added later', () => {
     const before = spawnSync(process.execPath, [join(target, 'scripts/harness/run-gates.ts'), 'doc-quick'], { cwd: target, encoding: 'utf8' })
-    assert.match(`${before.stdout ?? ''}${before.stderr ?? ''}`, /9 passed, 0 failed, 0 skipped/)
+    assert.match(`${before.stdout ?? ''}${before.stderr ?? ''}`, /10 passed, 0 failed, 0 skipped/)
 
     writeFileSync(join(target, 'src/app.ts'), 'export const a = 1 // 2026-10-13: switched the writer\nexport const b = 2 // 第 2 轮: retry budget\n')
     const after = spawnSync(process.execPath, [join(target, 'scripts/harness/run-gates.ts'), 'doc-quick'], { cwd: target, encoding: 'utf8' })
