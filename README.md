@@ -1,0 +1,45 @@
+# harness-skills
+
+从 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的工程治理实践中蒸馏出的两个 agent skill：纯 Node 直跑、零 npm 依赖、可整包复制进任何仓库。
+
+| skill | 拥有什么 |
+|---|---|
+| `agent-notes` | 决策记录的格式与生命周期：`{lifecycle}/{class}/yyyy-mm-dd-topic.md`、骨架强制、中英双语配对与一致性记录、冻结归档 |
+| `project-harness` | 规则住在哪里、怎么强制：AGENTS.md 分层、文档字数预算、Markdown 门禁、bootstrap 脚手架、统一 gate runner |
+
+两个 skill 互相配合：`project-harness` 决定「规则住在哪个文件」，`agent-notes` 决定「一条决策怎么被记录」；`bootstrap.ts` 会把 `agent-notes` 的门禁脚本一并复制进目标仓库——门禁必须能在没装 skill 的克隆与 CI 里独立运行。
+
+## 结构
+
+```
+.agents/skills/              # 技能本体，保持与目标仓库安装位置一致的路径
+  agent-notes/               #   SKILL.md + references/ + scripts/ + templates/
+  project-harness/           #   SKILL.md + references/ + scripts/ + templates/
+scripts/structure.spec.ts    # 仓库自身的不变量守卫（共享文件逐字节一致等）
+```
+
+## 装进一个仓库
+
+```sh
+cp -r .agents/skills <repo>/.agents/
+node .agents/skills/project-harness/scripts/bootstrap.ts --target <repo> --dry-run
+node .agents/skills/project-harness/scripts/bootstrap.ts --target <repo>
+```
+
+bootstrap 会铺 `.agents/notes/` 生命周期树、写 `harness.json`（主语言与配对开关）、复制门禁脚本到目标仓库的 `scripts/harness/`，并按 `--adopt` 与否决定既有违规是入账还是直接红。
+
+## 跑测试
+
+```sh
+npm test   # node --test：agent-notes 门禁负向对照 + 仓库结构守卫 + bootstrap/基线/runner 三套
+```
+
+新增或修改门禁规则时必须带**负向对照**用例：正向绿、反向红，缺一不可。
+
+## 与上游的关系
+
+实践与阈值蒸馏自 deepseek-harness（归档的 533/248 校准、2772 条封存记录、门禁的诚实边界等），但本仓是**免依赖重写**：无 mdast 等第三方依赖，门禁以行级解析近似上游的块级语义；有意简化处写在对应模块头注与 references 里（例：活跃配对记录按空行分块而非 AST 节点切块，见 `pair-record.ts`）。
+
+## 状态
+
+本地项目，未发布，未声明 license。

@@ -1,0 +1,12 @@
+{
+  "name": "harness-skills",
+  "private": true,
+  "type": "module",
+  "description": "从 deepseek-harness 提炼的工程治理技能包：agent-notes 与 project-harness（纯 Node，零依赖）",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test scripts/structure.spec.ts .agents/skills/agent-notes/scripts/gates.spec.ts .agents/skills/project-harness/scripts/bootstrap.spec.ts .agents/skills/project-harness/scripts/baseline.spec.ts .agents/skills/project-harness/scripts/run-gates.spec.ts"
+  }
+}
