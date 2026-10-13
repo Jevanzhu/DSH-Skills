@@ -10,13 +10,10 @@
  * a shape the declared list alone reports as clean.
  *
  * Shapes, exception tokens, and test-pinned comments are repository data
- * (`scripts/harness/comment-hygiene.manifest.json`); this gate owns the comment
- * surface, the fail-closed scan, and the reporting. `{}` declares no rules and passes.
- *
- * The comment surface comes from a character state machine: string, template, and
- * regex literals are skipped, so text that merely looks like a tag inside a literal is
- * never reported. Cleaning tools must never touch production literals, and this gate
- * is the machine form of that red line.
+ * (`scripts/harness/comment-hygiene.manifest.json`); this gate owns the rules, the
+ * fail-closed scan, and the reporting. `{}` declares no rules and passes. The comment
+ * surface itself comes from `surface.ts`: string, template, and regex literals are
+ * skipped, so text that merely looks like a tag inside a literal is never reported.
  *
  * Scan-surface failures are fail-closed and never recorded as debt: a missing scan
  * root, a root holding zero scannable files, and an unreadable directory are errors,
@@ -27,18 +24,14 @@
  *   node scripts/harness/verify-comment-hygiene.ts [--root <path>] --write-baseline [--accept-new]
  */
 
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { extname, relative, resolve, sep } from 'node:path'
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import type { CommentLine, ScanSpec } from './surface.ts'
+import { commentLines, scanSurface } from './surface.ts'
 import { resolveRepoRoot } from './harness-root.ts'
 import { reportBaseline, runBaselineGate } from './baseline.ts'
 
 const MANIFEST_REL = 'scripts/harness/comment-hygiene.manifest.json'
-
-/** Comment syntaxes this scanner understands: the C-family `//` and `/* *\/` forms. */
-const DEFAULT_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs']
-
-/** Never walked: dependencies and build output are not this repository's prose. */
-const EXCLUDED_DIRS = new Set(['node_modules', 'dist', 'build', 'vendor', 'coverage'])
 
 /** One forbidden shape. `pattern` is a regular expression source, matched per comment. */
 export interface CommentRule {
@@ -60,9 +53,7 @@ export interface AnchorRule {
 }
 
 /** Repository data: what to scan, and which shapes count as history. */
-export interface CommentManifest {
-  scan: string[]
-  extensions?: string[]
+export interface CommentManifest extends ScanSpec {
   labels: CommentRule[]
   residue?: CommentRule[]
   exceptions?: ExceptionRule[]
@@ -75,16 +66,6 @@ export interface ManifestRead {
   /** True for `{}`: no rules are declared, so there is nothing to check. */
   empty?: boolean
   error?: string
-}
-
-/** Comment content per source line, plus the line as written. */
-export interface CommentLine {
-  /** 1-based line number. */
-  line: number
-  /** Comment content on that line; empty when the line holds no comment. */
-  text: string
-  /** The whole source line, as written. */
-  raw: string
 }
 
 /** One hit: a declared shape or a residue found inside a comment. */
@@ -235,146 +216,6 @@ export function parseManifest(text: string): ManifestRead {
   return { manifest }
 }
 
-// ---------------------------------------------------------------------------
-// The comment surface: a character state machine that never reads a literal.
-// ---------------------------------------------------------------------------
-
-type Frame = { kind: 'template' } | { kind: 'interp'; depth: number }
-
-/** Skip a quoted string starting at `start`; an unterminated one stops at the newline. */
-function skipQuoted(source: string, start: number): number {
-  const quote = source[start]
-  let index = start + 1
-  while (index < source.length) {
-    const ch = source[index]
-    if (ch === '\\') { index += 2; continue }
-    if (ch === quote) return index + 1
-    if (ch === '\n') return index
-    index += 1
-  }
-  return index
-}
-
-/**
- * Whether the slash at `index` opens a regular expression rather than a division.
- * Heuristic, by design: an expression can start after an operator or a bracket, not
- * after a value. A misread degrades to scanning the literal as code, never to
- * reporting a literal's text as a comment.
- */
-function startsRegex(source: string, index: number): boolean {
-  let back = index - 1
-  while (back >= 0 && /\s/.test(source[back] ?? '')) back -= 1
-  if (back < 0) return true
-  return /[([{,;:=!&|?+\-*%~^<>]/.test(source[back] ?? '')
-}
-
-/** Skip a regular expression literal starting at `start`. */
-function skipRegex(source: string, start: number): number {
-  let index = start + 1
-  let inClass = false
-  while (index < source.length) {
-    const ch = source[index]
-    if (ch === '\\') { index += 2; continue }
-    if (ch === '\n') return start + 1
-    if (ch === '[') inClass = true
-    else if (ch === ']') inClass = false
-    else if (ch === '/' && !inClass) return index + 1
-    index += 1
-  }
-  return index
-}
-
-/** Comment content spans as `[start, end)` offsets into the source. */
-export function commentSpans(source: string): Array<{ start: number; end: number }> {
-  const spans: Array<{ start: number; end: number }> = []
-  const frames: Frame[] = []
-  let index = 0
-  const inCode = (): boolean => frames.length === 0 || frames.at(-1)?.kind === 'interp'
-  while (index < source.length) {
-    const ch = source[index] ?? ''
-    if (!inCode()) {
-      // Inside a template literal: only backticks and interpolation matter.
-      if (ch === '\\') { index += 2; continue }
-      if (ch === '`') { frames.pop(); index += 1; continue }
-      if (ch === '$' && source[index + 1] === '{') { frames.push({ kind: 'interp', depth: 1 }); index += 2; continue }
-      index += 1
-      continue
-    }
-    if (ch === '"' || ch === "'") { index = skipQuoted(source, index); continue }
-    if (ch === '`') { frames.push({ kind: 'template' }); index += 1; continue }
-    if (ch === '/' && source[index + 1] === '/') {
-      const start = index + 2
-      let end = source.indexOf('\n', start)
-      if (end === -1) end = source.length
-      spans.push({ start, end })
-      index = end
-      continue
-    }
-    if (ch === '/' && source[index + 1] === '*') {
-      const start = index + 2
-      const close = source.indexOf('*/', start)
-      const end = close === -1 ? source.length : close
-      spans.push({ start, end })
-      index = close === -1 ? source.length : close + 2
-      continue
-    }
-    if (ch === '/' && startsRegex(source, index)) { index = skipRegex(source, index); continue }
-    const top = frames.at(-1)
-    if (top?.kind === 'interp') {
-      if (ch === '{') top.depth += 1
-      else if (ch === '}') {
-        top.depth -= 1
-        if (top.depth <= 0) frames.pop()
-      }
-    }
-    index += 1
-  }
-  return spans
-}
-
-/** Comment content per source line. A multi-line block comment lands on every line it covers. */
-export function commentLines(source: string): CommentLine[] {
-  const rawLines = source.split('\n')
-  const lines: CommentLine[] = rawLines.map((raw, index) => ({
-    line: index + 1,
-    text: '',
-    raw: raw.endsWith('\r') ? raw.slice(0, -1) : raw,
-  }))
-  const starts: number[] = []
-  let offset = 0
-  for (const raw of rawLines) {
-    starts.push(offset)
-    offset += raw.length + 1
-  }
-  const lineOf = (position: number): number => {
-    let low = 0
-    let high = starts.length - 1
-    while (low < high) {
-      const mid = Math.ceil((low + high) / 2)
-      if ((starts[mid] ?? 0) > position) high = mid - 1
-      else low = mid
-    }
-    return low + 1
-  }
-
-  for (const span of commentSpans(source)) {
-    let line = lineOf(span.start)
-    let cursor = span.start
-    while (cursor < span.end && line <= lines.length) {
-      const lineEnd = (starts[line - 1] ?? 0) + (rawLines[line - 1]?.length ?? 0)
-      const stop = Math.min(span.end, lineEnd)
-      const piece = source.slice(cursor, stop)
-      const target = lines[line - 1]
-      if (target !== undefined && piece !== '') {
-        target.text = target.text === '' ? piece : `${target.text} ${piece}`
-      }
-      cursor = stop + 1
-      line += 1
-    }
-  }
-  return lines
-}
-
 interface CompiledRule {
   name: string
   re: RegExp
@@ -389,7 +230,7 @@ export function compileRules(rules: readonly CommentRule[]): CompiledRule[] {
 export function findHits(path: string, source: string, rules: readonly CompiledRule[]): Hit[] {
   const hits: Hit[] = []
   const seen = new Set<string>()
-  for (const commentLine of commentLines(source)) {
+  for (const commentLine of commentLines(source) as CommentLine[]) {
     if (commentLine.text === '') continue
     for (const rule of rules) {
       for (const match of commentLine.text.matchAll(rule.re)) {
@@ -403,62 +244,6 @@ export function findHits(path: string, source: string, rules: readonly CompiledR
     }
   }
   return hits
-}
-
-/** Files to scan, and every way the scan surface itself failed to be trustworthy. */
-export function scanSurface(root: string, manifest: CommentManifest): { files: string[]; problems: string[] } {
-  const allowed = new Set(manifest.extensions ?? DEFAULT_EXTENSIONS)
-  const files: string[] = []
-  const problems: string[] = []
-
-  const walk = (absDir: string): string[] => {
-    const found: string[] = []
-    let entries
-    try {
-      entries = readdirSync(absDir, { withFileTypes: true })
-    } catch (error: unknown) {
-      problems.push(`${relative(root, absDir).split(sep).join('/')}: cannot read (${error instanceof Error ? error.message : String(error)})`)
-      return found
-    }
-    for (const entry of entries) {
-      if (entry.name.startsWith('.') || EXCLUDED_DIRS.has(entry.name)) continue
-      const abs = resolve(absDir, entry.name)
-      if (entry.isDirectory()) found.push(...walk(abs))
-      else if (entry.isFile() && allowed.has(extname(entry.name).toLowerCase())) found.push(abs)
-    }
-    return found
-  }
-
-  for (const entry of manifest.scan) {
-    const abs = resolve(root, entry)
-    if (!existsSync(abs)) {
-      problems.push(`${entry}: scan root does not exist`)
-      continue
-    }
-    let stats
-    try {
-      stats = statSync(abs)
-    } catch (error: unknown) {
-      problems.push(`${entry}: cannot read (${error instanceof Error ? error.message : String(error)})`)
-      continue
-    }
-    if (stats.isFile()) {
-      if (!allowed.has(extname(abs).toLowerCase())) {
-        problems.push(`${entry}: declared file has no extension this scanner reads (${[...allowed].sort().join(' ')})`)
-        continue
-      }
-      files.push(entry)
-      continue
-    }
-    const collected = walk(abs)
-    if (collected.length === 0) {
-      problems.push(`${entry}: no scannable file under this root; a gate that scanned nothing must not pass`)
-      continue
-    }
-    files.push(...collected.map(abs => relative(root, abs).split(sep).join('/')))
-  }
-
-  return { files: [...new Set(files)].sort(), problems }
 }
 
 /** The ledger key: stable under unrelated edits, re-exposed by editing the comment. */

@@ -54,6 +54,7 @@ describe('bootstrapping a fresh repository', () => {
     // Each entry names a file the copied run-gates.ts spawns or a verifier imports.
     for (const file of [
       'harness-root.ts',
+      'surface.ts',
       'markdown.ts',
       'baseline.ts',
       'aliases.ts',
@@ -69,6 +70,7 @@ describe('bootstrapping a fresh repository', () => {
       'verify-doc-index.ts',
       'verify-md-links.ts',
       'verify-md-wrap.ts',
+      'verify-test-hygiene.ts',
       'run-gates.ts',
     ]) {
       assert.ok(existsSync(join(target, 'scripts/harness', file)), `${file} was not copied`)
@@ -84,7 +86,7 @@ describe('bootstrapping a fresh repository', () => {
     // A missing import surfaces as MODULE_NOT_FOUND; the gates must get far enough
     // to report their own verdicts instead.
     assert.doesNotMatch(out, /MODULE_NOT_FOUND|Cannot find module/)
-    assert.match(out, /8 passed, 0 failed, 0 skipped/, out)
+    assert.match(out, /9 passed, 0 failed, 0 skipped/, out)
   })
 
   test('creates the Agent Note lifecycle and archive trees the gates require', () => {
@@ -133,6 +135,13 @@ describe('bootstrapping a fresh repository', () => {
     assert.match(result.stdout ?? '', /comment-hygiene scans scripts for the starter shapes/)
   })
 
+  test('declares no test surface when the target keeps no tests yet', () => {
+    // A declared root holding no test file would be reported by the gate's fail-closed
+    // rule, so the seed writes nothing rather than a root that cannot be satisfied.
+    assert.deepEqual(JSON.parse(readFileSync(join(target, 'scripts/harness/test-hygiene.manifest.json'), 'utf8')), {})
+    assert.match(result.stdout ?? '', /no test directory found \(test, tests, __tests__\)/)
+  })
+
   test('is idempotent: a second run preserves the files the first run wrote', () => {
     const agents = readFileSync(join(target, 'AGENTS.md'), 'utf8')
     writeFileSync(join(target, 'AGENTS.md'), `${agents}\n<!-- local edit -->\n`)
@@ -165,7 +174,7 @@ describe('adopting a repository that already has violations', () => {
       cwd: target,
       encoding: 'utf8',
     })
-    assert.match(`${run.stdout ?? ''}${run.stderr ?? ''}`, /8 passed, 0 failed, 0 skipped/)
+    assert.match(`${run.stdout ?? ''}${run.stderr ?? ''}`, /9 passed, 0 failed, 0 skipped/)
   })
 
   test('but a newly broken link still fails', () => {
@@ -198,7 +207,7 @@ describe('adopting a repository whose comments already carry history', () => {
 
   test('passes on history alone, and still fails on a comment added later', () => {
     const before = spawnSync(process.execPath, [join(target, 'scripts/harness/run-gates.ts'), 'doc-quick'], { cwd: target, encoding: 'utf8' })
-    assert.match(`${before.stdout ?? ''}${before.stderr ?? ''}`, /8 passed, 0 failed, 0 skipped/)
+    assert.match(`${before.stdout ?? ''}${before.stderr ?? ''}`, /9 passed, 0 failed, 0 skipped/)
 
     writeFileSync(join(target, 'src/app.ts'), 'export const a = 1 // 2026-10-13: switched the writer\nexport const b = 2 // 第 2 轮: retry budget\n')
     const after = spawnSync(process.execPath, [join(target, 'scripts/harness/run-gates.ts'), 'doc-quick'], { cwd: target, encoding: 'utf8' })

@@ -15,7 +15,8 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { after, describe, test } from 'node:test'
-import { commentLines, parseManifest } from './verify-comment-hygiene.ts'
+import { parseManifest } from './verify-comment-hygiene.ts'
+import { commentLines } from './surface.ts'
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), 'verify-comment-hygiene.ts')
 const MANIFEST = 'scripts/harness/comment-hygiene.manifest.json'

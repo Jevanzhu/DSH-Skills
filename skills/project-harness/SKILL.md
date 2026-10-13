@@ -97,7 +97,7 @@ node ~/.agents/skills/project-harness/scripts/bootstrap.ts --target <repo> --ado
 
 ### 测试可靠性
 
-并发下非确定性失败的根因分类与修法。核心是**拒绝掩盖型修复**——加长超时、加重试、跳过的测试不是修好了，只是不再报告问题。见 [references/test-reliability.md](references/test-reliability.md)。
+并发下非确定性失败的根因分类与修法。核心是**拒绝掩盖型修复**——加长超时、加重试、跳过的测试不是修好了，只是不再报告问题。两条配套纪律：**先判该不该写**（一条改动 = 一条回退即变红的用例；断言只锚对外可观察面），**表面绿而覆盖消失是门禁的事**（`.only` 一律红，无条件 `.skip` 红，条件式环境门合法——`verify-test-hygiene.ts`）。见 [references/test-reliability.md](references/test-reliability.md)。
 
 ### 历史与归档
 

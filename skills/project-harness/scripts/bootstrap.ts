@@ -28,6 +28,7 @@ const BASELINE_GATES: ReadonlyArray<readonly [gate: string, file: string]> = [
   ['markdown-links', 'verify-md-links.ts'],
   ['markdown-wrap', 'verify-md-wrap.ts'],
   ['comment-hygiene', 'verify-comment-hygiene.ts'],
+  ['test-hygiene', 'verify-test-hygiene.ts'],
 ]
 
 /**
@@ -41,7 +42,8 @@ const BASELINE_GATES: ReadonlyArray<readonly [gate: string, file: string]> = [
 const VERIFIER_FILES: ReadonlyArray<readonly [file: string, sourceDir: string, paired?: boolean]> = [
   // Shared by every gate in both skills.
   ['harness-root.ts', SCRIPT_DIR],
-  // The shared Markdown scanner the documentation gates import.
+  // The shared scanners the text gates import.
+  ['surface.ts', SCRIPT_DIR],
   ['markdown.ts', SCRIPT_DIR],
   // The debt ledger every baseline-aware gate records into.
   ['baseline.ts', SCRIPT_DIR],
@@ -60,6 +62,7 @@ const VERIFIER_FILES: ReadonlyArray<readonly [file: string, sourceDir: string, p
   ['verify-doc-index.ts', SCRIPT_DIR],
   ['verify-md-links.ts', SCRIPT_DIR],
   ['verify-md-wrap.ts', SCRIPT_DIR],
+  ['verify-test-hygiene.ts', SCRIPT_DIR],
   ['run-gates.ts', SCRIPT_DIR],
 ]
 
@@ -88,6 +91,13 @@ const COMMENT_HYGIENE_STARTER = {
     { name: '括注只剩破折号', pattern: '（\\s*[-—–]+\\s*）' },
   ],
 }
+
+/**
+ * Directories a repository conventionally keeps its tests in, for the test-hygiene
+ * seed. A source tree is not among them: a repository whose tests sit next to the code
+ * declares that root itself, and the seed does not guess it.
+ */
+const TEST_SCAN_CANDIDATES = ['test', 'tests', '__tests__']
 
 /** Standing docs the budget manifest measures on first run. */
 const BUDGET_CANDIDATES = ['AGENTS.md', 'docs/AGENTS.md', 'README.md', 'docs/architecture.md']
@@ -307,7 +317,24 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
     notes.push(`comment-hygiene scans ${scan.join(', ')} for the starter shapes; add a root to the manifest when code lands elsewhere, and register a real term that collides with a shape as an exception`)
   }
 
-  // 7. Copy the starter templates only when the target has no equivalent yet.
+  // 7. Seed the test surface from the directories the target actually keeps tests in.
+  // With none of them present, `{}` declares no test surface: the gate's fail-closed
+  // "scanned nothing" rule must never fire on a repository that has no tests yet.
+  const testPath = join(options.target, HARNESS_DIR, 'test-hygiene.manifest.json')
+  if (existsSync(testPath) && !options.force) {
+    skipped.push(relative(options.target, testPath))
+  } else {
+    const scan = TEST_SCAN_CANDIDATES.filter(candidate => existsSync(join(options.target, candidate)))
+    if (scan.length === 0) {
+      write(join(HARNESS_DIR, 'test-hygiene.manifest.json'), '{}\n')
+      notes.push(`no test directory found (${TEST_SCAN_CANDIDATES.join(', ')}); the test-hygiene manifest starts empty — declare the root when tests land, including a source tree if tests sit next to the code`)
+    } else {
+      write(join(HARNESS_DIR, 'test-hygiene.manifest.json'), `${JSON.stringify({ scan }, null, 2)}\n`)
+      notes.push(`test-hygiene scans ${scan.join(', ')} for focused runs and titled skips`)
+    }
+  }
+
+  // 8. Copy the starter templates only when the target has no equivalent yet.
   for (const [template, destination] of [
     ['AGENTS.md', 'AGENTS.md'],
     ['lefthook.yml', 'lefthook.yml'],
@@ -327,7 +354,7 @@ skill directory (~/.agents/skills/agent-notes and ~/.agents/skills/project-harne
     }
   }
 
-  // 8. Adoption: record the debt that predates the harness. Without this an existing
+  // 9. Adoption: record the debt that predates the harness. Without this an existing
   // repository goes red on its own history, and a gate that is red on day one gets
   // switched off on day two. The ledger is the difference between "this repository is
   // dirty" and "this change made it dirtier".

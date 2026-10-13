@@ -289,13 +289,18 @@ const noteGates: Gate[] = [
   },
 ]
 
-/** Documentation and prose rules: dead links, one-line paragraphs, budgets, chain index, comments. */
-const docGates: Gate[] = [
+/**
+ * Rules over the repository's own text — documentation, comments, test surface — none
+ * of which needs a build. The aggregate mode keeps its historic name `doc-quick` so
+ * branch protection on an already-installed repository keeps pointing at one check.
+ */
+const textGates: Gate[] = [
   { id: 'markdown-links', label: 'Markdown links and anchors', command: 'node', args: [`${HARNESS}/verify-md-links.ts`], quick: true },
   { id: 'markdown-wrap', label: 'One paragraph per line', command: 'node', args: [`${HARNESS}/verify-md-wrap.ts`], quick: true },
   { id: 'doc-budgets', label: 'Documentation word budgets', command: 'node', args: [`${HARNESS}/verify-doc-budgets.ts`], quick: true },
   { id: 'doc-index', label: 'Document chain index', command: 'node', args: [`${HARNESS}/verify-doc-index.ts`], quick: true },
   { id: 'comment-hygiene', label: 'Comment hygiene', command: 'node', args: [`${HARNESS}/verify-comment-hygiene.ts`], quick: true },
+  { id: 'test-hygiene', label: 'Focused and skipped tests', command: 'node', args: [`${HARNESS}/verify-test-hygiene.ts`], quick: true },
 ]
 
 /**
@@ -303,7 +308,7 @@ const docGates: Gate[] = [
  * repository-specific mode for whatever else this project must check.
  */
 export const MODES: Readonly<Record<string, readonly Gate[]>> = {
-  'doc-quick': [...noteGates, ...docGates],
+  'doc-quick': [...noteGates, ...textGates],
   'agent-notes': noteGates,
 }
 
