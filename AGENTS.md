@@ -14,4 +14,11 @@
 ## 入口
 
 - `README.md`：结构、安装、测试、与上游的关系。
+- `docs/README.md`：本仓文档链——活账、执行档、设计档；未了结事项先在活账立一行。
 - `skills/agent-notes/SKILL.md`、`skills/project-harness/SKILL.md`：两个 skill 的正文，改动前先读对应 SKILL.md 与其 references。
+
+## 本文件的维护
+
+本仓的工作语言声明在这里：**中文**——文档、提交信息与指令文件同一种语言，别处不再重复声明；换语言是整棵树的显式迁移，不是逐文件漂移（判据见 [语言策略](skills/project-harness/references/language-policy.md)）。**指令面永不配对**：本文件与两个 `SKILL.md` 各只有一份；需要双语的知识住在对照面，配对与一致性记录只在那边。
+
+只放规则，不放决策。逐条问：「这条改了，需要谁点头？」没人点头、跑一遍 `npm test` 就绿的是规则，留在这里；需要有人被说服的是决策，写进 [docs/03-设计/](docs/03-设计/) 并在这里留一句指针。

@@ -31,7 +31,7 @@ node skills/project-harness/scripts/bootstrap.ts --target <repo> --dry-run
 node skills/project-harness/scripts/bootstrap.ts --target <repo>
 ```
 
-bootstrap 会铺 `.agents/notes/` 生命周期树、写 `harness.json`（主语言与配对开关）、复制门禁脚本到目标仓库的 `scripts/harness/`，并按 `--adopt` 与否决定既有违规是入账还是直接红。
+bootstrap 会铺 `.agents/notes/` 生命周期树、写 `harness.json`（主语言与配对开关）、按 `--notes-language` 选语言的起步模板（`AGENTS`、`docs/AGENTS`、`lefthook`），并复制门禁脚本到目标仓库的 `scripts/harness/`，按 `--adopt` 与否决定既有违规是入账还是直接红。
 
 升级已装的仓库用同一命令加 `--force`：它只刷新 `scripts/harness/` 下的校验器副本，你在各 manifest 里的申报（文档索引、宣称清单、注释规则、预算、测试面）不受影响；要按当前实测的树重新生成那些 manifest，用独立且破坏性的 `--reset-manifests`。装完读目标仓库的 `scripts/harness/version.json` 就知道装的是哪一版。
 
@@ -54,6 +54,6 @@ npm run check # run-gates 的 text 模式：文本面门禁，跑哪些以门禁
 
 ## 状态
 
-当前版本 0.1.4（`skills/VERSION`，两个 skill 共用一号）：凡是改动 `scripts/`、`SKILL.md`、`references/` 或 `templates/` 下任何文件，都同批动它。
+当前版本 0.1.5（`skills/VERSION`，两个 skill 共用一号）：凡是改动 `scripts/`、`SKILL.md`、`references/` 或 `templates/` 下任何文件，都同批动它。
 
 公开仓库：[Jevanzhu/DSH-Skills](https://github.com/Jevanzhu/DSH-Skills)，MIT 许可（见 `LICENSE`）。

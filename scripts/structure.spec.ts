@@ -55,6 +55,18 @@ describe('repository structure', () => {
       }
     }
   })
+
+  test('the harness templates cover both languages for every starter', () => {
+    // Bootstrap picks a starter by the adopter's language, so a starter missing its
+    // English half hands an English repository Chinese rules — the same defect the
+    // note templates guard against, one directory over.
+    const templates = readdirSync(join(SKILLS_ROOT, 'project-harness/templates'))
+    for (const [starter, ext] of [['AGENTS', 'md'], ['docs-AGENTS', 'md'], ['ledger', 'md'], ['docs-index', 'md'], ['lefthook', 'yml']] as const) {
+      for (const locale of ['en', 'zh']) {
+        assert.ok(templates.includes(`${starter}.${locale}.${ext}`), `templates/${starter}.${locale}.${ext} is missing`)
+      }
+    }
+  })
 })
 
 describe('every shipped gate runs when it is invoked', () => {
