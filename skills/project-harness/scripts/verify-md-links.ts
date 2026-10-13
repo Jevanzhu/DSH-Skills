@@ -73,24 +73,28 @@ function readPatterns(root: string): RegExp[] | undefined {
 }
 
 /**
- * Read the root `.gitignore` and return the top-level names it excludes. Only
- * directory-name and simple path entries are honored: gitignore's full pattern
+ * Read the root `.gitignore` and return the paths it excludes, relative to the root.
+ * Only directory and literal path entries are honored: gitignore's full pattern
  * language would make a documentation gate harder to predict than the problems it
- * catches. A vendored or reference clone listed here is skipped, which is what
- * keeps the scan focused on authored documentation.
+ * catches. A glob segment ends the entry, so `dist/**` excludes `dist` while
+ * `Dev/reference-clone` excludes exactly that path and leaves its parent scanned —
+ * reading only the first segment would drop the whole `Dev` tree, silently voiding
+ * every scan surface under it.
  */
-function gitignoredTopLevel(root: string): Set<string> {
+function gitignoredPaths(root: string): Set<string> {
   const path = resolve(root, '.gitignore')
   const ignored = new Set<string>()
   if (!existsSync(path)) return ignored
   for (const rawLine of readFileSync(path, 'utf8').split('\n')) {
     const line = rawLine.trim()
     if (line === '' || line.startsWith('#') || line.startsWith('!')) continue
-    // Take the first path segment, dropping any negation and trailing glob.
-    const segment = line.replace(/^\/+/, '').split('/')[0] ?? ''
-    const name = segment.replace(/\*+$/, '')
-    if (name === '' || name.includes('*') || name.includes('?')) continue
-    ignored.add(name)
+    const literal: string[] = []
+    for (const segment of line.replace(/^\/+/, '').split('/')) {
+      if (segment === '') continue
+      if (segment.includes('*') || segment.includes('?')) break
+      literal.push(segment)
+    }
+    if (literal.length > 0) ignored.add(literal.join('/'))
   }
   return ignored
 }
@@ -98,9 +102,9 @@ function gitignoredTopLevel(root: string): Set<string> {
 /** Every Markdown file under `root`, relative to it, honoring patterns when configured. */
 export function markdownFiles(root: string): string[] {
   const patterns = readPatterns(root)
-  const gitignored = gitignoredTopLevel(root)
+  const gitignored = gitignoredPaths(root)
   const found: string[] = []
-  const walk = (absDir: string, topLevel: boolean): void => {
+  const walk = (absDir: string): void => {
     let entries
     try {
       entries = readdirSync(absDir, { withFileTypes: true })
@@ -109,21 +113,21 @@ export function markdownFiles(root: string): string[] {
     }
     for (const entry of entries) {
       if (entry.name.startsWith('.')) continue
-      if (topLevel && gitignored.has(entry.name)) continue
       const abs = resolve(absDir, entry.name)
+      const rel = relative(root, abs).split(sep).join('/')
+      if (gitignored.has(rel)) continue
       if (entry.isDirectory()) {
         if (BUILD_DIRECTORIES.has(entry.name)) continue
         // A pattern list decides for itself what to include.
         if (patterns === undefined && GENERATED_CONTENT_DIRECTORIES.has(entry.name)) continue
-        walk(abs, false)
+        walk(abs)
       } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) {
-        const rel = relative(root, abs).split(sep).join('/')
         if (patterns !== undefined && !patterns.some(pattern => pattern.test(rel))) continue
         found.push(rel)
       }
     }
   }
-  walk(root, true)
+  walk(root)
   return found.sort()
 }
 
@@ -198,6 +202,14 @@ function main(): void {
   if (process.argv.includes('--list')) {
     console.log(files.join('\n'))
     process.exit(0)
+  }
+  // An empty scan surface passes every link check there is; the failure mode it
+  // hides — a patterns file that matches nothing, or a root resolved too high — is
+  // exactly the one worth failing on. Recording an empty surface is allowed: the
+  // ledger has nothing to adopt, which is a fact rather than a silent pass.
+  if (files.length === 0 && !process.argv.includes('--write-baseline')) {
+    console.error('verify-md-links: no Markdown file to scan; a gate that scanned nothing must not pass (check `scripts/harness/markdown-patterns.json` and the repository root).')
+    process.exit(1)
   }
 
   const violations = findLinkViolations(root, files)
