@@ -1,0 +1,18 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: 测试（node --test，零依赖直跑）
+        run: npm test
+      - name: 文档门（链接 / 一段一行）
+        run: npm run check:docs
