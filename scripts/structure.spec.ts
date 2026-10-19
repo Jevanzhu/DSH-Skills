@@ -9,7 +9,7 @@
 
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -65,6 +65,50 @@ describe('repository structure', () => {
       for (const locale of ['en', 'zh']) {
         assert.ok(templates.includes(`${starter}.${locale}.${ext}`), `templates/${starter}.${locale}.${ext} is missing`)
       }
+    }
+  })
+
+  test('every Markdown template ships both languages, and the guard rejects a single-language set', () => {
+    // A template is a starter the adopter picks by language, so a lone language is a
+    // half-written starter nobody notices: the copy step succeeds and the reader gets
+    // the other language's placeholder. Pairing is checked per directory rather than
+    // against a list, so a new template joins the guard by existing.
+    const unpaired = (dir: string): string[] => {
+      const names = readdirSync(dir)
+      const missing: string[] = []
+      for (const name of names.filter(entry => entry.endsWith('.md'))) {
+        const match = /^(.*)\.(zh|en)\.md$/.exec(name)
+        if (match === null) {
+          missing.push(`${name} (no .zh/.en suffix)`)
+          continue
+        }
+        const counterpart = `${match[1]}.${match[2] === 'zh' ? 'en' : 'zh'}.md`
+        if (!names.includes(counterpart)) missing.push(counterpart)
+      }
+      return missing
+    }
+    const guard = (dir: string): void => {
+      const missing = unpaired(dir)
+      assert.equal(missing.length, 0, `${dir}: template(s) without a language counterpart: ${missing.join(', ')}`)
+    }
+    const templateDirs = ['project-harness/templates', 'agent-notes/templates'].map(dir => join(SKILLS_ROOT, dir))
+    for (const dir of templateDirs) {
+      assert.ok(existsSync(dir), `${dir} is missing`)
+      assert.ok(readdirSync(dir).some(name => name.endsWith('.md')), `${dir} holds no Markdown template to pair`)
+      guard(dir)
+    }
+
+    // Negative control: the same guard must reject a set that carries one language only,
+    // otherwise the green above would also pass if nothing had been read.
+    const root = mkdtempSync(join(tmpdir(), 'template-pairs-'))
+    try {
+      writeFileSync(join(root, 'paired.zh.md'), '# paired\n')
+      writeFileSync(join(root, 'paired.en.md'), '# paired\n')
+      guard(root)
+      writeFileSync(join(root, 'solo.zh.md'), '# solo\n')
+      assert.throws(() => guard(root), /solo\.en\.md/, 'a single-language template set must be rejected')
+    } finally {
+      rmSync(root, { recursive: true, force: true })
     }
   })
 })

@@ -44,7 +44,7 @@ npm run check # run-gates 的 text 模式：文本面门禁，跑哪些以门禁
 
 本仓**不设 CI**：门禁只在本地跑，提交前自己跑一遍这两条。仓库自己的检查以本地为准，采用方的仓库要不要接 CI 由采用方定（`project-harness` 的 doctrine 里，CI 是「本地薄」的另一半，不是本仓的义务）。
 
-`run-gates.ts` 底部的门禁表是本仓检查的唯一声明点，`npm run check` 与 CI 只是它的一层壳：`text` 模式（7 道）是每次改动都跑的文本面规则，`doc-quick`（10 道）是交付给采用方的秒级聚合，`check-all` 是全量、留给采用方按技术栈往里加构建与测试门。两个数都是**下限**而不是目标——规则只增不减，加规则就往门禁表里加一门，删门要被 `verify-doc-claims.ts` 抓住。
+`run-gates.ts` 底部的门禁表是本仓检查的唯一声明点，`npm run check` 与 CI 只是它的一层壳：`text` 模式（8 道）是每次改动都跑的文本面规则，`doc-quick`（11 道）是交付给采用方的秒级聚合，`check-all` 是全量、留给采用方按技术栈往里加构建与测试门。两个数都是**下限**而不是目标——规则只增不减，加规则就往门禁表里加一门，删门要被 `verify-doc-claims.ts` 抓住。
 
 新增或修改门禁规则时必须带**负向对照**用例：正向绿、反向红，缺一不可。
 
@@ -54,6 +54,6 @@ npm run check # run-gates 的 text 模式：文本面门禁，跑哪些以门禁
 
 ## 状态
 
-当前版本 0.1.8（`skills/VERSION`，两个 skill 共用一号）：凡是改动 `scripts/`、`SKILL.md`、`references/` 或 `templates/` 下任何文件，都同批动它。
+当前版本 0.1.9（`skills/VERSION`，两个 skill 共用一号）：凡是改动 `scripts/`、`SKILL.md`、`references/` 或 `templates/` 下任何文件，都同批动它。
 
 公开仓库：[Jevanzhu/DSH-Skills](https://github.com/Jevanzhu/DSH-Skills)，MIT 许可（见 `LICENSE`）。
