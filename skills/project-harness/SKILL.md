@@ -1,6 +1,6 @@
 ---
 name: project-harness
-version: 0.1.9
+version: 0.1.10
 display_name: 工程治理门禁
 display_name_en: Project Harness
 description: >-

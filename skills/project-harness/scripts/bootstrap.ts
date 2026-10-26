@@ -18,11 +18,23 @@ import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { BASELINE_REL } from './baseline.ts'
 import { countDocWords } from './doc-words.ts'
+// Type-only: stripped at run time, so the integrated layout — which carries the
+// aliases beside this script with no sibling directory to resolve — never loads this
+// path. Turning it into a runtime import would break that layout.
 import type { ClassSlot, LifecycleSlot, Locale } from '../../agent-notes/scripts/aliases.ts'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const SKILL_ROOT = resolve(SCRIPT_DIR, '..')
-const AGENT_NOTES_SKILL = resolve(SKILL_ROOT, '../agent-notes/scripts')
+/**
+ * Where the paired `agent-notes` verifiers are read from. The two-skill layout ships
+ * them in a sibling directory; the integrated layout carries them beside this script.
+ * The sibling wins whenever it exists, so a partial two-skill copy still reaches the
+ * missing-pair refusal below instead of quietly satisfying itself from whatever
+ * happens to sit next to bootstrap.ts.
+ */
+const AGENT_NOTES_SKILL = existsSync(resolve(SKILL_ROOT, '../agent-notes/scripts'))
+  ? resolve(SKILL_ROOT, '../agent-notes/scripts')
+  : SCRIPT_DIR
 const HARNESS_DIR = 'scripts/harness'
 
 /**

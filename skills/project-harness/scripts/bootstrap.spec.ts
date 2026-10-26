@@ -646,3 +646,47 @@ describe('a partial installation', () => {
     assert.equal(existsSync(join(target, 'scripts/harness/run-gates.ts')), false)
   })
 })
+
+describe('the integrated layout (both skills merged into one directory)', () => {
+  /**
+   * A single skill directory carrying the scripts of both skills and no sibling:
+   * `agent-notes` resolved beside bootstrap.ts instead of in `../agent-notes`.
+   */
+  function integratedSource(): string {
+    const root = tracked()
+    const merged = join(root, 'dsh-project-harness')
+    cpSync(SKILL_ROOT, merged, { recursive: true })
+    const paired = join(SKILL_ROOT, '..', 'agent-notes', 'scripts')
+    for (const entry of readdirSync(paired)) {
+      cpSync(join(paired, entry), join(merged, 'scripts', entry))
+    }
+    return merged
+  }
+
+  test('bootstraps from the merged directory alone, copying the paired verifiers', () => {
+    const target = tracked()
+    const run = spawnSync(process.execPath, [join(integratedSource(), 'scripts/bootstrap.ts'), '--target', target], {
+      encoding: 'utf8',
+    })
+    assert.equal(run.status, 0, String(run.stderr))
+    // The pairs prove the fallback resolved: in this layout they can only come from
+    // the merged scripts directory itself.
+    for (const file of ['aliases.ts', 'verify-agent-note-format.ts', 'verify-archived-agent-notes.ts']) {
+      assert.ok(existsSync(join(target, 'scripts/harness', file)), `${file} was not copied`)
+    }
+  })
+
+  test('still refuses when the merged directory lost a paired verifier', () => {
+    // The fallback must not weaken the precondition: a layout missing a pair still
+    // fails loudly, whichever directory the pairs were expected in.
+    const merged = integratedSource()
+    rmSync(join(merged, 'scripts', 'aliases.ts'))
+    const target = tracked()
+    const run = spawnSync(process.execPath, [join(merged, 'scripts/bootstrap.ts'), '--target', target], {
+      encoding: 'utf8',
+    })
+    assert.equal(run.status, 1)
+    assert.match(run.stderr ?? '', /missing the paired `agent-notes` skill/)
+    assert.equal(existsSync(join(target, 'scripts/harness/run-gates.ts')), false)
+  })
+})

@@ -1,6 +1,6 @@
 ---
 name: agent-notes
-version: 0.1.9
+version: 0.1.10
 display_name: 决策记录
 display_name_en: Agent Notes
 description: >-
