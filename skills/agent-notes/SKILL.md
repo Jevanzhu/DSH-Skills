@@ -1,5 +1,8 @@
 ---
 name: agent-notes
+version: 0.1.9
+display_name: 决策记录
+display_name_en: Agent Notes
 description: >-
   Record and maintain durable decision records — the why, the rejected
   alternatives, and the consequences code and docs cannot carry. 决策记录 / ADR /
@@ -8,6 +11,14 @@ description: >-
   do it this way" has no record; when a change reverses an earlier decision; or
   when auditing, pruning, or verifying an existing .agents/notes/ corpus
   (lifecycle tree, classification, bilingual pairing, archive seals).
+description_zh: >-
+  记录并维护持久的决策记录——当初为什么这么做、否决过哪些备选方案、后续有什么影响。用于撰写决策记录（ADR）、设计文档与技术方案，或审计、整理、归档已有的 .agents/notes 语料。
+description_en: >-
+  Record and maintain durable decision records — the why, the rejected
+  alternatives, and the consequences. Use for writing decision records (ADR),
+  design docs, or technical proposals, or for auditing and maintaining an
+  existing .agents/notes corpus (lifecycle, classification, bilingual pairing,
+  archive seals).
 ---
 
 # Agent Notes

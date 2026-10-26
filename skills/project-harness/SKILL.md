@@ -1,5 +1,8 @@
 ---
 name: project-harness
+version: 0.1.9
+display_name: 工程治理门禁
+display_name_en: Project Harness
 description: >-
   Establish and maintain a repository's engineering conventions and executable
   gates — 文档管理 / 文档整理 / 文档落位 / 文档链 / 索引与活账 / 评审报告 /
@@ -9,6 +12,12 @@ description: >-
   documentation standards or word budgets, landing review or audit reports into
   the document chain, reviewing a pull request, or dispatching work to
   sub-agents (靶点 / 验收判据 / 不读面).
+description_zh: >-
+  把团队的协作规范变成可执行的门禁：文档层级与字数预算、Markdown 门禁、bootstrap 脚手架、统一 gate runner、代码评审、测试可靠性等工程治理机制。
+description_en: >-
+  Turn a team's conventions into executable gates: documentation hierarchy and
+  word budgets, Markdown gates, bootstrap scaffolding, a unified gate runner,
+  code review, and test reliability.
 ---
 
 # Project Harness
