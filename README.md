@@ -1,21 +1,24 @@
 # DSH-Skills
 
-从 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的工程治理实践中蒸馏出的两个 agent skill：纯 Node 直跑、零 npm 依赖、可整包复制进任何仓库。运行要求（Node 版本下限）以 `package.json` 的 `engines` 为准——门禁是 TypeScript 源文件直跑，靠 Node 的类型剥离特性。
+从 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的工程治理实践中蒸馏出的两个 agent skill 及其整合版：纯 Node 直跑、零 npm 依赖、可整包复制进任何仓库。运行要求（Node 版本下限）以 `package.json` 的 `engines` 为准——门禁是 TypeScript 源文件直跑，靠 Node 的类型剥离特性。
 
 | skill | 拥有什么 |
 |---|---|
 | `agent-notes` | 决策记录的格式与生命周期：`{lifecycle}/{class}/yyyy-mm-dd-topic.md`（目录与文件名主干随语料语言，英文 `implemented/feature/` ↔ 中文 `已实施/功能/`）、骨架强制、中英双语配对与一致性记录、冻结归档 |
 | `project-harness` | 规则住在哪里、怎么强制：AGENTS.md 分层、文档字数预算、Markdown 门禁、bootstrap 脚手架、统一 gate runner |
+| `dsh-project-harness` | 前两者的整合形态：单目录包、单一技能条目，references/scripts/templates 由构建从两源逐字节镜像（含 bootstrap，配对脚本同目录自举），SKILL.md 为人写门面 |
 
-两个 skill 互相配合：`project-harness` 决定「规则住在哪个文件」，`agent-notes` 决定「一条决策怎么被记录」；`bootstrap.ts` 会把 `agent-notes` 的门禁脚本一并复制进目标仓库——门禁必须能在没装 skill 的克隆与 CI 里独立运行。
+两个 skill 互相配合：`project-harness` 决定「规则住在哪个文件」，`agent-notes` 决定「一条决策怎么被记录」；`bootstrap.ts` 会把 `agent-notes` 的门禁脚本一并复制进目标仓库——门禁必须能在没装 skill 的克隆与 CI 里独立运行。整合版能力与分离版等价：`bootstrap.ts` 找不到兄弟 `agent-notes` 目录时回退同目录，单目录自举。
 
 ## 结构
 
 ```
-skills/                      # 技能本体；源码布局，安装时复制到目标仓库的 .agents/skills/
+skills/                      # 技能本体；源码布局，安装时按需复制到目标仓库的 .agents/skills/
   agent-notes/               #   SKILL.md + references/ + scripts/ + templates/
   project-harness/           #   SKILL.md + references/ + scripts/ + templates/
+  dsh-project-harness/       #   两者的整合版：资源由构建从两源镜像，SKILL.md 是人写门面
 docs/                        # 本仓自己的文档链：索引 / 活账 / 槽位目录（规则见 doc-lifecycle）
+scripts/build-integrated.ts  # 整合版构建器；--check 即「整合版与两源一致」校验
 scripts/structure.spec.ts    # 仓库自身的不变量守卫（共享文件逐字节一致等）
 scripts/harness/             # 本仓自己的检查声明：各道门读的 manifest
 ```
@@ -24,12 +27,22 @@ scripts/harness/             # 本仓自己的检查声明：各道门读的 man
 
 ## 装进一个仓库
 
+分离双技能与整合单技能二选一，能力等价；整合版面向单副本安装与单一条目路由的客户端（DSH、workbuddy 等「扫描 `.agents/skills` 根、按 name + description 路由」的形态）。
+
 ```sh
+# 分离双技能（两个独立技能条目）
 mkdir -p <repo>/.agents/skills
-cp -r skills/. <repo>/.agents/skills/
+cp -r skills/agent-notes skills/project-harness <repo>/.agents/skills/
 node skills/project-harness/scripts/bootstrap.ts --target <repo> --dry-run
 node skills/project-harness/scripts/bootstrap.ts --target <repo>
+
+# 整合单技能（单一技能条目）
+cp -r skills/dsh-project-harness <repo>/.agents/skills/
+node skills/dsh-project-harness/scripts/bootstrap.ts --target <repo> --dry-run
+node skills/dsh-project-harness/scripts/bootstrap.ts --target <repo>
 ```
+
+改了两个源 skill 后重跑 `node scripts/build-integrated.ts` 让整合版跟上（`--check` 校验一致性，`npm test` 里钉住）；不要手改整合版的资源目录——下一次构建会静默还原。
 
 bootstrap 会铺 `.agents/notes/` 生命周期树、写 `harness.json`（主语言与配对开关）、按 `--notes-language` 选语言的起步模板（`AGENTS`、`docs/AGENTS`、`lefthook`），并复制门禁脚本到目标仓库的 `scripts/harness/`，按 `--adopt` 与否决定既有违规是入账还是直接红。
 
@@ -54,6 +67,6 @@ npm run check # run-gates 的 text 模式：文本面门禁，跑哪些以门禁
 
 ## 状态
 
-当前版本 0.1.9（`skills/VERSION`，两个 skill 共用一号）：凡是改动 `scripts/`、`SKILL.md`、`references/` 或 `templates/` 下任何文件，都同批动它。
+当前版本 0.1.10（`skills/VERSION`，三个 skill 共用一号）：凡是改动 `scripts/`、`SKILL.md`、`references/` 或 `templates/` 下任何文件，都同批动它；动了两个源 skill 就重跑 `scripts/build-integrated.ts` 同批更新整合版。
 
 公开仓库：[Jevanzhu/DSH-Skills](https://github.com/Jevanzhu/DSH-Skills)，MIT 许可（见 `LICENSE`）。

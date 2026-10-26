@@ -9,11 +9,12 @@
 
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, test } from 'node:test'
+import { integratedDiff } from './build-integrated.ts'
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const SKILLS_ROOT = join(REPO_ROOT, 'skills')
@@ -91,7 +92,7 @@ describe('repository structure', () => {
       const missing = unpaired(dir)
       assert.equal(missing.length, 0, `${dir}: template(s) without a language counterpart: ${missing.join(', ')}`)
     }
-    const templateDirs = ['project-harness/templates', 'agent-notes/templates'].map(dir => join(SKILLS_ROOT, dir))
+    const templateDirs = ['project-harness/templates', 'agent-notes/templates', 'dsh-project-harness/templates'].map(dir => join(SKILLS_ROOT, dir))
     for (const dir of templateDirs) {
       assert.ok(existsSync(dir), `${dir} is missing`)
       assert.ok(readdirSync(dir).some(name => name.endsWith('.md')), `${dir} holds no Markdown template to pair`)
@@ -109,6 +110,38 @@ describe('repository structure', () => {
       assert.throws(() => guard(root), /solo\.en\.md/, 'a single-language template set must be rejected')
     } finally {
       rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('the integrated skill mirrors the two source skills byte for byte', () => {
+    // The integrated skill is a build product: its references/, scripts/ and
+    // templates/ are copied from the two source skills and never edited in place —
+    // a divergence is a hand edit the next build silently reverts. The rule is the
+    // builder's own diff, so this test and `node scripts/build-integrated.ts`
+    // cannot disagree about what "in sync" means.
+    assert.equal(
+      integratedDiff(SKILLS_ROOT, join(SKILLS_ROOT, 'dsh-project-harness')).length, 0,
+      'the integrated skill drifted from its sources; run node scripts/build-integrated.ts',
+    )
+
+    // Negative control: the same diff must see a forged byte, an orphaned file and a
+    // missing one, otherwise the green above would also pass if nothing was compared.
+    const drift = mkdtempSync(join(tmpdir(), 'integrated-drift-'))
+    try {
+      mkdirSync(join(drift, 'agent-notes/references'), { recursive: true })
+      mkdirSync(join(drift, 'project-harness/scripts'), { recursive: true })
+      writeFileSync(join(drift, 'agent-notes/references/shared.md'), 'A\n')
+      writeFileSync(join(drift, 'project-harness/scripts/own.ts'), 'B\n')
+      const integrated = join(drift, 'dsh-project-harness')
+      mkdirSync(join(integrated, 'references'), { recursive: true })
+      writeFileSync(join(integrated, 'references/shared.md'), 'DRIFTED\n')
+      writeFileSync(join(integrated, 'references/orphan.md'), 'X\n')
+      const verbs = new Map(integratedDiff(drift, integrated).map(action => [action.rel, action.verb]))
+      assert.equal(verbs.get('references/shared.md'), 'refresh')
+      assert.equal(verbs.get('references/orphan.md'), 'delete')
+      assert.equal(verbs.get('scripts/own.ts'), 'copy')
+    } finally {
+      rmSync(drift, { recursive: true, force: true })
     }
   })
 })
