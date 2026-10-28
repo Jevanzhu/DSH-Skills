@@ -4,7 +4,7 @@
       "name": "text 模式下限",
       "kind": "count",
       "doc": "README.md",
-      "command": ["node", "skills/project-harness/scripts/run-gates.ts", "text", "--list"],
+      "command": ["node", "skills/dsh-project-harness/scripts/run-gates.ts", "text", "--list"],
       "byLines": true,
       "expect": "atLeast",
       "pattern": "`text` 模式（(\\d+) 道）"
@@ -13,7 +13,7 @@
       "name": "doc-quick 模式下限",
       "kind": "count",
       "doc": "README.md",
-      "command": ["node", "skills/project-harness/scripts/run-gates.ts", "doc-quick", "--list"],
+      "command": ["node", "skills/dsh-project-harness/scripts/run-gates.ts", "doc-quick", "--list"],
       "byLines": true,
       "expect": "atLeast",
       "pattern": "`doc-quick`（(\\d+) 道）"
@@ -28,12 +28,12 @@
       "name": "发行版本",
       "kind": "list",
       "doc": "README.md",
-      "command": ["node", "-e", "console.log(require('fs').readFileSync('skills/VERSION', 'utf8').trim())"]
+      "command": ["node", "-e", "console.log(require('fs').readFileSync('skills/dsh-project-harness/VERSION', 'utf8').trim())"]
     },
     {
       "name": "Node 下限",
       "kind": "count",
-      "doc": "skills/project-harness/SKILL.md",
+      "doc": "skills/dsh-project-harness/SKILL.md",
       "command": ["node", "-e", "console.log(/[>]=?(\\d+)/.exec(require('./package.json').engines.node)[1])"],
       "expect": "equal",
       "pattern": "Node ≥ (\\d+)"

@@ -1,20 +1,18 @@
 /**
- * Invariants of this repository itself. Each skill is copied out on its own, so
- * the per-skill specs cannot see the failures that live *between* the copies:
- * a shared file edited on one side only, a skill whose frontmatter name drifts
- * from its directory, or a template set that loses a language.
+ * Invariants of this repository itself: a skill whose frontmatter name drifts from its
+ * directory, a template set that loses a language, a shipped gate that answers "not the
+ * entry point" and exits green having checked nothing.
  *
  * Run with: npm test
  */
 
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, test } from 'node:test'
-import { integratedDiff } from './build-integrated.ts'
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const SKILLS_ROOT = join(REPO_ROOT, 'skills')
@@ -25,20 +23,6 @@ const SKILLS = readdirSync(SKILLS_ROOT, { withFileTypes: true })
   .sort()
 
 describe('repository structure', () => {
-  test('every shared file is byte-identical across the skills that carry it', () => {
-    for (const file of ['harness-root.ts']) {
-      const copies = SKILLS
-        .map(skill => join(SKILLS_ROOT, skill, 'scripts', file))
-        .filter(path => existsSync(path))
-      assert.ok(copies.length >= 2, `${file} is expected under every skill`)
-      const first = copies[0] ?? ''
-      const reference = readFileSync(first, 'utf8')
-      for (const copy of copies.slice(1)) {
-        assert.equal(readFileSync(copy, 'utf8'), reference, `${copy} diverged from ${first}`)
-      }
-    }
-  })
-
   test('every skill declares a frontmatter name matching its directory', () => {
     for (const skill of SKILLS) {
       const skillFile = join(SKILLS_ROOT, skill, 'SKILL.md')
@@ -49,7 +33,7 @@ describe('repository structure', () => {
   })
 
   test('the note templates cover both languages for every lifecycle', () => {
-    const templates = readdirSync(join(SKILLS_ROOT, 'agent-notes/templates'))
+    const templates = readdirSync(join(SKILLS_ROOT, 'dsh-project-harness/templates'))
     for (const lifecycle of ['implemented', 'proposed', 'rejected']) {
       for (const locale of ['en', 'zh']) {
         assert.ok(templates.includes(`${lifecycle}.${locale}.md`), `templates/${lifecycle}.${locale}.md is missing`)
@@ -61,7 +45,7 @@ describe('repository structure', () => {
     // Bootstrap picks a starter by the adopter's language, so a starter missing its
     // English half hands an English repository Chinese rules — the same defect the
     // note templates guard against, one directory over.
-    const templates = readdirSync(join(SKILLS_ROOT, 'project-harness/templates'))
+    const templates = readdirSync(join(SKILLS_ROOT, 'dsh-project-harness/templates'))
     for (const [starter, ext] of [['AGENTS', 'md'], ['docs-AGENTS', 'md'], ['ledger', 'md'], ['docs-index', 'md'], ['lefthook', 'yml']] as const) {
       for (const locale of ['en', 'zh']) {
         assert.ok(templates.includes(`${starter}.${locale}.${ext}`), `templates/${starter}.${locale}.${ext} is missing`)
@@ -92,7 +76,7 @@ describe('repository structure', () => {
       const missing = unpaired(dir)
       assert.equal(missing.length, 0, `${dir}: template(s) without a language counterpart: ${missing.join(', ')}`)
     }
-    const templateDirs = ['project-harness/templates', 'agent-notes/templates', 'dsh-project-harness/templates'].map(dir => join(SKILLS_ROOT, dir))
+    const templateDirs = ['dsh-project-harness/templates'].map(dir => join(SKILLS_ROOT, dir))
     for (const dir of templateDirs) {
       assert.ok(existsSync(dir), `${dir} is missing`)
       assert.ok(readdirSync(dir).some(name => name.endsWith('.md')), `${dir} holds no Markdown template to pair`)
@@ -110,38 +94,6 @@ describe('repository structure', () => {
       assert.throws(() => guard(root), /solo\.en\.md/, 'a single-language template set must be rejected')
     } finally {
       rmSync(root, { recursive: true, force: true })
-    }
-  })
-
-  test('the integrated skill mirrors the two source skills byte for byte', () => {
-    // The integrated skill is a build product: its references/, scripts/ and
-    // templates/ are copied from the two source skills and never edited in place —
-    // a divergence is a hand edit the next build silently reverts. The rule is the
-    // builder's own diff, so this test and `node scripts/build-integrated.ts`
-    // cannot disagree about what "in sync" means.
-    assert.equal(
-      integratedDiff(SKILLS_ROOT, join(SKILLS_ROOT, 'dsh-project-harness')).length, 0,
-      'the integrated skill drifted from its sources; run node scripts/build-integrated.ts',
-    )
-
-    // Negative control: the same diff must see a forged byte, an orphaned file and a
-    // missing one, otherwise the green above would also pass if nothing was compared.
-    const drift = mkdtempSync(join(tmpdir(), 'integrated-drift-'))
-    try {
-      mkdirSync(join(drift, 'agent-notes/references'), { recursive: true })
-      mkdirSync(join(drift, 'project-harness/scripts'), { recursive: true })
-      writeFileSync(join(drift, 'agent-notes/references/shared.md'), 'A\n')
-      writeFileSync(join(drift, 'project-harness/scripts/own.ts'), 'B\n')
-      const integrated = join(drift, 'dsh-project-harness')
-      mkdirSync(join(integrated, 'references'), { recursive: true })
-      writeFileSync(join(integrated, 'references/shared.md'), 'DRIFTED\n')
-      writeFileSync(join(integrated, 'references/orphan.md'), 'X\n')
-      const verbs = new Map(integratedDiff(drift, integrated).map(action => [action.rel, action.verb]))
-      assert.equal(verbs.get('references/shared.md'), 'refresh')
-      assert.equal(verbs.get('references/orphan.md'), 'delete')
-      assert.equal(verbs.get('scripts/own.ts'), 'copy')
-    } finally {
-      rmSync(drift, { recursive: true, force: true })
     }
   })
 })

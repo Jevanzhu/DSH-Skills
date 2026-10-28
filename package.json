@@ -2,13 +2,13 @@
   "name": "dsh-skills",
   "private": true,
   "type": "module",
-  "description": "从 deepseek-harness 提炼的工程治理技能包：agent-notes 与 project-harness（纯 Node，零依赖）",
+  "description": "从 deepseek-harness 提炼的工程治理技能包：单一 skill 承载决策记录与门禁（纯 Node，零依赖）",
   "license": "MIT",
   "engines": {
     "node": ">=24"
   },
   "scripts": {
-    "test": "node --test scripts/structure.spec.ts scripts/build-integrated.spec.ts skills/agent-notes/scripts/gates.spec.ts skills/project-harness/scripts/bootstrap.spec.ts skills/project-harness/scripts/baseline.spec.ts skills/project-harness/scripts/run-gates.spec.ts skills/project-harness/scripts/verify-doc-index.spec.ts skills/project-harness/scripts/verify-doc-budgets.spec.ts skills/project-harness/scripts/verify-comment-hygiene.spec.ts skills/project-harness/scripts/verify-test-hygiene.spec.ts skills/project-harness/scripts/verify-doc-claims.spec.ts skills/project-harness/scripts/verify-md-links.spec.ts skills/project-harness/scripts/verify-skill-catalog.spec.ts",
-    "check": "node skills/project-harness/scripts/run-gates.ts text --stream"
+    "test": "node --test scripts/structure.spec.ts skills/dsh-project-harness/scripts/gates.spec.ts skills/dsh-project-harness/scripts/bootstrap.spec.ts skills/dsh-project-harness/scripts/baseline.spec.ts skills/dsh-project-harness/scripts/run-gates.spec.ts skills/dsh-project-harness/scripts/verify-doc-index.spec.ts skills/dsh-project-harness/scripts/verify-doc-budgets.spec.ts skills/dsh-project-harness/scripts/verify-comment-hygiene.spec.ts skills/dsh-project-harness/scripts/verify-test-hygiene.spec.ts skills/dsh-project-harness/scripts/verify-doc-claims.spec.ts skills/dsh-project-harness/scripts/verify-md-links.spec.ts skills/dsh-project-harness/scripts/verify-skill-catalog.spec.ts",
+    "check": "node skills/dsh-project-harness/scripts/run-gates.ts text --stream"
   }
 }
