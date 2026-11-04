@@ -35,7 +35,7 @@ DSH 的文件系统 provider 按 rank 扫描固定根，rank 数值小的先被�
 
 **同名冲突的裁决。** 同一层内按上表的 rank 升序先到先得，被遮蔽的一方只在客户端日志留一条 warn；跨层时近作用域（agent preset 层）整体遮蔽全局层。要让某个技能的副本压过共享根里的同名技能，才用 `<项目根>/.dsh/skills`（rank 100）；没有压制需求时放 `.dsh/skills` 只是失去跨客户端共享。
 
-**`~/.agents` 可能整棵不存在。** `agentsHome` 的解析优先级是显式配置、`$DSH_AGENTS_HOME`、`~/.agents`；解析只计算路径，不创建目录。所以文档里的命令一律写 `<skill-dir>`，不写死 `~/.agents/skills/...`：`<skill-dir>` 是解析后实际安装的那份副本目录（本仓的说明写 `<repo>/.agents/skills/dsh-project-harness`）。缺失的根会被客户端轮询直到它出现，不算错误。
+**`~/.agents` 可能整棵不存在。** `agentsHome` 的解析优先级是显式配置、`$DSH_AGENTS_HOME`、`~/.agents`；解析只计算路径，不创建目录。所以文档里的命令一律写 `<skill-dir>`，不写死 `~/.agents/skills/...`：`<skill-dir>` 是解析后实际被加载的那份副本目录。缺失的根会被客户端轮询直到它出现，不算错误。
 
 ## 目录里放什么
 
@@ -103,7 +103,7 @@ DSH 的文件系统 provider 按 rank 扫描固定根，rank 数值小的先被�
 | `<agentsHome>/skills` | 用户级共享根 | 是，rank 500 |
 | `<项目根>/.claude/skills` | Claude Code 的约定 | 否，DSH 根表里没有它 |
 
-装进 `.claude/skills` 的技能 DSH 不会发现；`.agents/skills` 是两边都可能读的共享位置，默认装这里。`<skill-dir>` 就是这套根解析之后实际安装的那份副本目录——本仓说明给的是 `<repo>/.agents/skills/project-harness`，也可以装到用户级共享根。
+装进 `.claude/skills` 的技能 DSH 不会发现；`.agents/skills` 是两边都可能读的共享位置，默认装这里。`<skill-dir>` 就是这套根解析之后实际加载的那份副本目录——客户端在 `<skill_resources>` 里给出基目录，脚本按自身位置解析。它通常在用户级某根；`<repo>/.agents/skills/dsh-project-harness` 只是项目级安装的一种实例，不是要求。项目里没有技能目录是正常形态：技能装在哪是客户端配置，不是仓库的内容。
 
 **`/name` 是用户的显式入口。** 用户输入里以空白为界的 `/name` token，若命中工作区目录中一个用户可调用技能，就把同一份 `<skill_content>` 作为该步骤的指令上下文注入；这是 `disable-model-invocation: true` 技能的唯一入口。未知名字与用户不可调用的名字保持普通行文；目录里已列出的技能被 `/name` 调用后，目录结尾句要求模型遵循注入块、不再重复加载。
 

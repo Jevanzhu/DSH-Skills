@@ -11,23 +11,35 @@
 ## 结构
 
 ```
-skills/                      # 技能本体；源码布局，安装时复制到目标仓库的 .agents/skills/
+skills/                      # 技能本体；源码布局，装到各客户端的用户级根
   dsh-project-harness/       #   SKILL.md + references/ + scripts/ + templates/ + VERSION
 docs/                        # 本仓自己的文档链：索引 / 活账 / 槽位目录（规则见 doc-lifecycle）
 scripts/structure.spec.ts    # 仓库自身的不变量守卫（frontmatter name、模板双语配对、门禁可被调用）
 scripts/harness/             # 本仓自己的检查声明：各道门读的 manifest
 ```
 
-`.agents/` 是**安装位置**而不是源码位置：它给消费方仓库用，被客户端当作技能目录扫描。正本仓不占这个路径，避免本仓的技能被当成已安装技能加载，也避免源码布局与安装布局混为一谈。脚本一律按「相对于自身 skill 目录」解析，因此两份布局都跑得通。
+技能装在哪由客户端的用户级根决定，本仓不占这些路径：正本只在这里维护，安装副本落在 `~/.agents/skills`、`~/.claude/skills`、`~/.codebuddy/skills` 之类的目录。项目里没有技能目录也是正常形态——bootstrap 只往项目写 `scripts/harness/` 的校验器与文档骨架，不读也不写任何 skills 目录。脚本一律按「相对于自身 skill 目录」解析，所以换安装位置不需要改项目。
 
-## 装进一个仓库
+## 装到用户级，再初始化一个仓库
+
+技能是机器级配置，不是仓库的产物。正本留在这里，给每个实际用到的客户端各放一个入口：
 
 ```sh
-mkdir -p <repo>/.agents/skills
-cp -r skills/dsh-project-harness <repo>/.agents/skills/
-node skills/dsh-project-harness/scripts/bootstrap.ts --target <repo> --dry-run
-node skills/dsh-project-harness/scripts/bootstrap.ts --target <repo>
+git clone <repo> ~/src/DSH-Skills
+for r in ~/.agents/skills ~/.claude/skills ~/.codebuddy/skills; do
+  mkdir -p "$r"
+  ln -sfn ~/src/DSH-Skills/skills/dsh-project-harness "$r/dsh-project-harness"
+done
 ```
+
+同一台机器上多个客户端各读自己的根，指向同一份内容，所以升级只更新正本（`git pull`）。初始化只改目标仓库，不读取也不写入任何 skills 目录：
+
+```sh
+node <skill-dir>/scripts/bootstrap.ts --target <repo> --dry-run
+node <skill-dir>/scripts/bootstrap.ts --target <repo>
+```
+
+把技能复制进仓库（`<repo>/.agents/skills/`）是另一回事，只在需要钉住版本、或 CI 环境里没有技能安装时这么做——那份副本会遮蔽用户级同名技能，所以两个位置不要同时维护。
 
 bootstrap 会铺 `.agents/notes/` 生命周期树、写 `harness.json`（主语言与配对开关）、按 `--notes-language` 选语言的起步模板（`AGENTS`、`docs/AGENTS`、`lefthook`），并复制门禁脚本到目标仓库的 `scripts/harness/`，按 `--adopt` 与否决定既有违规是入账还是直接红。
 
@@ -54,6 +66,6 @@ npm run check # run-gates 的 text 模式：文本面门禁，跑哪些以门禁
 
 ## 状态
 
-当前版本 0.1.12（`skills/dsh-project-harness/VERSION`，随 skill 目录一起复制）：凡是改动 `scripts/`、`SKILL.md`、`references/` 或 `templates/` 下任何文件，都同批动它。
+当前版本 0.1.13（`skills/dsh-project-harness/VERSION`，随 skill 目录一起复制）：凡是改动 `scripts/`、`SKILL.md`、`references/` 或 `templates/` 下任何文件，都同批动它。
 
 公开仓库：[Jevanzhu/DSH-Skills](https://github.com/Jevanzhu/DSH-Skills)，MIT 许可（见 `LICENSE`）。

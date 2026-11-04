@@ -154,7 +154,7 @@ export function scanCatalog(root: string, manifest: SkillCatalogManifest): Catal
   for (const relRoot of manifest.roots) {
     const absRoot = resolve(root, relRoot)
     if (!existsSync(absRoot) || !statSync(absRoot).isDirectory()) {
-      problems.push(`${relRoot}: declared in the manifest but no such directory exists`)
+      problems.push(`${relRoot}: declared in the manifest but no such directory exists (a skill installed in a user-level client root is not part of this repository — drop the root rather than creating the directory)`)
       continue
     }
     const before = documents.length

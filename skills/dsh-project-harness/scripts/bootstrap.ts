@@ -461,10 +461,11 @@ with gates that die on MODULE_NOT_FOUND. Re-copy the whole skill directory
     skipped.push(relative(options.target, docIndexPath))
   } else {
     write(join(HARNESS_DIR, 'doc-index.manifest.json'), '{}\n', options.resetManifests)
-    // Named by absolute path: these templates live in the skill, not in the target,
-    // so a relative-looking path would send the reader looking for a file that is not
-    // there. They are deliberately not copied — the chain slots are a judgement call.
-    notes.push(`doc-index.manifest.json declares no chain yet; when this repository keeps an indexed document chain, start it from ${join(SKILL_ROOT, 'templates')} (ledger.${notesLanguage}.md, docs-index.${notesLanguage}.md) — the language tier names the template's language, not a counterpart`)
+    // Named relative to the skill, never by an absolute path: this copy may live in any
+    // client's user-level root, and a machine path pasted into a document pins the
+    // repository to one machine. "templates/" is unambiguous once the reader knows it
+    // belongs to the skill, which the note says.
+    notes.push(`doc-index.manifest.json declares no chain yet; when this repository keeps an indexed document chain, start it from this skill's templates/ directory (templates/ledger.${notesLanguage}.md, templates/docs-index.${notesLanguage}.md) — the language tier names the template's language, not a counterpart`)
   }
 
   // 6. Seed the comment rules against the target's own tree. Which candidate roots
@@ -515,7 +516,7 @@ with gates that die on MODULE_NOT_FOUND. Re-copy the whole skill directory
     skipped.push(relative(options.target, catalogPath))
   } else {
     write(join(HARNESS_DIR, 'skill-catalog.manifest.json'), '{}\n', options.resetManifests)
-    notes.push('skill-catalog.manifest.json declares no skill roots yet; after installing skills into .agents/skills, add that directory to `roots` so the gate checks their names and description budgets')
+    notes.push('skill-catalog.manifest.json declares no skill roots yet, which is the normal state when the skill lives in a client user-level root. Declare a root only when this repository ships skills of its own, so the gate checks their names and description budgets')
   }
 
   // 10. Write the starter templates on the first scaffold only. The starters are
@@ -533,7 +534,7 @@ with gates that die on MODULE_NOT_FOUND. Re-copy the whole skill directory
   ] as const) {
     const source = join(SKILL_ROOT, 'templates', template)
     if (!existsSync(source)) {
-      notes.push(`no ${template} in this bundle; write ${destination} yourself (the other language's starter is in ${join(SKILL_ROOT, 'templates')})`)
+      notes.push(`no ${template} in this bundle; write ${destination} yourself (the other language's starter is in this skill's templates/ directory)`)
       continue
     }
     const abs = join(options.target, destination)
@@ -542,7 +543,7 @@ with gates that die on MODULE_NOT_FOUND. Re-copy the whole skill directory
       continue
     }
     if (installedBefore) {
-      notes.push(`${destination} is missing; starter documents are written only on the first scaffold, so a deleted one stays deleted — take ${join(SKILL_ROOT, 'templates', template)} if it should come back`)
+      notes.push(`${destination} is missing; starter documents are written only on the first scaffold, so a deleted one stays deleted — take templates/${template} from this skill if it should come back`)
       continue
     }
     planned.push(destination)
@@ -612,8 +613,8 @@ Next steps that need your judgment (the harness cannot infer these):
   5. To require the archive gate, seal the tree with:
        node ${HARNESS_DIR}/verify-archived-agent-notes.ts --write
   6. If this repository keeps an indexed document chain (an index document, slot
-     directories, a ledger of open items), start it from ${join(SKILL_ROOT, 'templates', `ledger.${notesLanguage}.md`)}
-     and ${join(SKILL_ROOT, 'templates', `docs-index.${notesLanguage}.md`)}, then declare the slots in
+     directories, a ledger of open items), start it from this skill's templates/
+     directory (templates/ledger.${notesLanguage}.md and templates/docs-index.${notesLanguage}.md), then declare the slots in
      ${HARNESS_DIR}/doc-index.manifest.json.
   7. When a document states a number or a list a command can measure (how many gates
      run, which directories exist), declare it in ${HARNESS_DIR}/doc-claims.manifest.json

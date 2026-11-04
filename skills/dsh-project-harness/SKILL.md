@@ -1,6 +1,6 @@
 ---
 name: dsh-project-harness
-version: 0.1.12
+version: 0.1.13
 display_name: 决策记录与工程治理门禁
 display_name_en: DSH Project Harness
 description: >-
@@ -134,7 +134,7 @@ class 是决策的种类，取值封闭：`feature`/`功能`（新的用户或�
 node <skill-dir>/scripts/bootstrap.ts --target <repo> [--notes-language en|zh] [--dry-run]
 ```
 
-`<skill-dir>` 是已安装副本 `<repo>/.agents/skills/dsh-project-harness`（本仓源码布局为 `skills/dsh-project-harness`）。
+`<skill-dir>` 是本次会话加载到的那份副本目录——客户端在 `<skill_resources>` 里给出的 base directory，脚本侧按自身位置解析。它通常在某个客户端的用户级根（`~/.claude/skills`、`~/.codebuddy/skills`、`~/.agents/skills`），也可以在仓库里。bootstrap 不依赖这个位置，项目也不需要拥有一个 skills 目录。
 
 它会建好 Agent Note 生命周期树与归档清单、按目标仓库实测词数算出文档预算、把校验器复制到 `<target>/scripts/harness/`（**复制而非引用**——CI 和任何 clone 者必须能独立跑门禁），并列出需要你决策的剩余步骤。详细流程见 [references/bootstrap.md](references/bootstrap.md)。
 

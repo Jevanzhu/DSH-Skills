@@ -7,7 +7,7 @@ node <skill-dir>/scripts/bootstrap.ts --target <repo> --dry-run
 node <skill-dir>/scripts/bootstrap.ts --target <repo>
 ```
 
-`<skill-dir>` 是已安装副本 `<repo>/.agents/skills/dsh-project-harness`（本仓源码布局为 `skills/dsh-project-harness`）。不要写死 `~/.agents/skills/...`：用户级技能根可能整棵不存在，逐字执行会 ENOENT。
+`<skill-dir>` 是本次会话加载到的那份副本目录（客户端给出的 base directory；脚本侧按自身位置解析）。它通常在某个客户端的用户级根，也可能在仓库里；安装位置不写进任何生成文件，所以换安装位置不需要改项目，也不需要把技能复制进目标仓。别在命令里写死 `~/.agents/skills/...`：用户级根可能整棵不存在，逐字执行会 ENOENT。
 
 中文语料在第一次铺的时候声明语言，别等铺完再改：
 
