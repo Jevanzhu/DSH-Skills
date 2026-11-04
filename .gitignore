@@ -23,7 +23,7 @@ npm-debug.log*
 
 # `.agents/` 是安装位置而不是源码位置（见 README「结构」）。
 # 误落在这里的副本若被提交，就成了与 skills/ 并列的第二份源码。
-.agents/
+#.agents/
 
 # 手工 bootstrap 演练的临时目标：落在仓根；测试自身用 os.tmpdir()，不落仓内
 /tmp-harness-*/
