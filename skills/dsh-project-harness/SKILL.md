@@ -1,22 +1,22 @@
 ---
 name: dsh-project-harness
-version: 0.1.11
+version: 0.1.12
 display_name: 决策记录与工程治理门禁
 display_name_en: DSH Project Harness
 description: >-
   Decision records and executable engineering gates in one skill — 决策记录 / ADR /
   设计文档 / 技术方案 / 归档 / 文档管理 / 文档链 / 活账 / 工程规范 / 代码评审 /
-  注释卫生 / 门禁 / 质量体系 / AGENTS.md / 测试可靠性 / 派活. Use when writing or
+  注释卫生 / 门禁 / 质量体系 / AGENTS.md / 测试可靠性 / 测试量 / 派活. Use when writing or
   auditing decision records (.agents/notes, archiving), setting up repository rules
   and gates, enforcing doc budgets, landing review reports, reviewing a PR, or
   dispatching sub-agents.
 description_zh: >-
-  单一技能同时承载决策记录与工程治理门禁：决策记录（ADR）的格式、生命周期、双语配对与冻结归档；文档层级与字数预算、Markdown 门禁、bootstrap 脚手架、统一 gate runner、代码评审、测试可靠性、agent 派发纪律。
+  单一技能同时承载决策记录与工程治理门禁：决策记录（ADR）的格式、生命周期、双语配对与冻结归档；文档层级与字数预算、Markdown 门禁、bootstrap 脚手架、统一 gate runner、代码评审、测试可靠性、测试量与停手、agent 派发纪律。
 description_en: >-
   Decision records and executable engineering gates in one skill: ADR format,
   lifecycle, bilingual pairing and frozen archiving; documentation hierarchy and
   word budgets, Markdown gates, bootstrap scaffolding, a unified gate runner, code
-  review, test reliability, agent dispatch discipline.
+  review, test reliability and test volume, agent dispatch discipline.
 ---
 
 # DSH Project Harness
@@ -42,6 +42,7 @@ description_en: >-
 | 启用双语配对 | [references/bilingual.md](references/bilingual.md) |
 | 写、迁、归档任何文档 | [references/doc-lifecycle.md](references/doc-lifecycle.md) |
 | 决定规则住哪、写多长 | [references/doc-governance.md](references/doc-governance.md) |
+| 决定跑多少测试、何时停 | [references/test-reliability.md](references/test-reliability.md) |
 | 派活、审计、通读 | [references/agent-work.md](references/agent-work.md) |
 | 加门禁、接 CI、核对宣称值 | [references/gates.md](references/gates.md) |
 | 换客户端、技能没生效 | [references/client-loading.md](references/client-loading.md) |
@@ -210,9 +211,9 @@ node <skill-dir>/scripts/bootstrap.ts --target <repo> --adopt
 
 评审的目标排序是正确性、生命周期、安全、必需行为**先于**风格。`一条有据可依的阻断项胜过一串 nit`。关键的一条流程要求：先核实 PR 的真实 base 与 head，再看 diff。见 [references/review.md](references/review.md)。
 
-### 测试可靠性
+### 测试：写不写、跑多少、怎么修
 
-并发下非确定性失败的根因分类与修法。核心是**拒绝掩盖型修复**——加长超时、加重试、跳过的测试不是修好了，只是不再报告问题。两条配套纪律：**先判该不该写**（一条改动 = 一条回退即变红的用例；断言只锚对外可观察面），**表面绿而覆盖消失是门禁的事**（`.only` 一律红，无条件 `.skip` 红，条件式环境门合法——`verify-test-hygiene.ts`）。见 [references/test-reliability.md](references/test-reliability.md)。
+三条判断相互独立。**写不写**：一条改动 = 一条回退即变红的用例，断言只锚对外可观察面；**表面绿而覆盖消失是门禁的事**（`.only` 一律红，无条件 `.skip` 红，条件式环境门合法——`verify-test-hygiene.ts`）。**跑多少**：纯文档、注释、类型面不跑测试；改代码过程中只做编译级检查（build、typecheck、lint）；决定提交时跑一次覆盖本次改动面的证据档（全量的三种情形见 pre-push），一个内容状态只产生一次证据，重跑只在输入或环境变了、或上一次运行无效时合法。**怎么修**：拒绝掩盖型修复——加长超时、加重试、跳过的测试不是修好了；红灯先分诊（本次引入／既有／环境／非确定），只有本次引入进修复循环，同一失败两个假设不成立就报阻塞。负向对照只约束新增或修改的门禁规则。见 [references/test-reliability.md](references/test-reliability.md)。
 
 ### Agent 工作纪律
 

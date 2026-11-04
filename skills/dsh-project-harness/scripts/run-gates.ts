@@ -159,6 +159,9 @@ export interface RunGatesOptions {
   /**
    * Stop launching new gates after the first blocking failure. Gates already running
    * finish; gates never started are recorded skipped with an explicit reason.
+   *
+   * Off by default: independent gates all run, so one run reports every failure. Turn it
+   * on where machine time matters more than a complete diagnosis (typically CI).
    */
   failFast?: boolean
   /** Stream each gate's output as it arrives, instead of printing on completion. */
@@ -337,7 +340,7 @@ export const MODES: Readonly<Record<string, readonly Gate[]>> = {
 }
 
 function usage(): never {
-  console.error(`usage: node run-gates.ts <mode> [--list] [--concurrency N] [--stream]
+  console.error(`usage: node run-gates.ts <mode> [--list] [--concurrency N] [--stream] [--fail-fast]
 modes: ${Object.keys(MODES).join(', ')}`)
   process.exit(1)
 }
@@ -348,10 +351,12 @@ async function main(): Promise<void> {
   let listOnly = false
   let concurrency: number | undefined
   let stream = false
+  let failFast = false
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
     if (arg === '--list') listOnly = true
     else if (arg === '--stream') stream = true
+    else if (arg === '--fail-fast') failFast = true
     else if (arg === '--concurrency') {
       index += 1
       concurrency = Number(argv[index])
@@ -379,7 +384,7 @@ async function main(): Promise<void> {
   }
 
   console.log(`run-gates: mode ${mode}, ${gates.length} gate(s), concurrency ${concurrency ?? 4}`)
-  const results = await runGates(gates, { concurrency, failFast: true, streamOutput: stream })
+  const results = await runGates(gates, { concurrency, failFast, streamOutput: stream })
   printSummary(results)
 
   if (!stream) {

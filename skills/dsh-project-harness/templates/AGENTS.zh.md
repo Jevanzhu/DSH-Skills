@@ -31,7 +31,7 @@ standing orders 层：只写「每次会话都需要在上下文里的规则」�
 
 ## 门禁
 
-改动前跑最小充分证据，推送前的检查按改动面选择（见 project-harness 的 pre-push 指引）。
+改动前跑最小充分证据，推送前的检查按改动面选择（见 project-harness 的 pre-push 指引）。测试按量跑：改代码过程中只做编译级检查（build、typecheck、lint），决定提交时跑一次覆盖本次改动面的证据档，只有改动横跨整个仓库才跑全量；同一内容状态不重跑已经通过的检查。
 
 ```sh
 node scripts/harness/run-gates.ts doc-quick   # 秒级，文档与决策记录

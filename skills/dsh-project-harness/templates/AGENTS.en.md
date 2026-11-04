@@ -32,7 +32,7 @@ Target length: 30–60 lines. Beyond that, ask which rules have moved house.
 
 ## Gates
 
-Run the smallest sufficient evidence before a change; pick the pre-push checks by the surface touched (see project-harness's pre-push guidance).
+Run the smallest sufficient evidence before a change; pick the pre-push checks by the surface touched (see project-harness's pre-push guidance). Run tests by budget: during implementation, limit checks to compilation-level ones (build, typecheck, lint); when committing, run one evidence pass covering the surface, and run the full mode only for changes that span the repository. Do not re-run checks that already passed on the same content state.
 
 ```sh
 node scripts/harness/run-gates.ts doc-quick   # seconds: documents and decision records

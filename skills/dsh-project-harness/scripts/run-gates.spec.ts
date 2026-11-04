@@ -7,7 +7,9 @@
  */
 
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { tmpdir } from 'node:os'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, test } from 'node:test'
@@ -235,6 +237,37 @@ describe('the modes the artifacts promise', () => {
           assert.ok(isAbsolute(argument), `${entry.id}: ${argument} is not resolved relative to the runner`)
         }
       }
+    }
+  })
+})
+
+describe('the command line', () => {
+  const RUNNER = join(dirname(fileURLToPath(import.meta.url)), 'run-gates.ts')
+
+  /** Run the shipped runner in an empty repository, where several text gates fail closed. */
+  function runText(root: string, extra: string[] = []) {
+    return spawnSync(process.execPath, [RUNNER, 'text', '--concurrency', '1', ...extra], {
+      cwd: root,
+      encoding: 'utf8',
+    })
+  }
+
+  test('keeps going after a blocking failure unless --fail-fast is passed', () => {
+    // An empty directory makes several independent text gates fail. Keep-going must report
+    // more than one of them in a single run; --fail-fast must stop and say why the rest
+    // never ran. This pins the CLI default, not just the scheduler option.
+    const root = mkdtempSync(join(tmpdir(), 'run-gates-cli-'))
+    try {
+      const keptGoing = runText(root)
+      assert.equal(keptGoing.status, 1)
+      const failures = keptGoing.stdout.match(/^FAIL /gm) ?? []
+      assert.ok(failures.length > 1, `expected several independent failures in one run, saw ${failures.length}`)
+
+      const stopped = runText(root, ['--fail-fast'])
+      assert.equal(stopped.status, 1)
+      assert.match(stopped.stdout, /skipped \(fail-fast: an earlier gate failed\)/)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
     }
   })
 })
